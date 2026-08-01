@@ -1,0 +1,20 @@
+# Dependencies and build output
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Environment files
+.env*
+!.env.example
+
+# Local tooling and logs
+*.log
+npm-debug.log*
+.eslintcache
+.firebase/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.tsbuildinfo
