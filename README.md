@@ -20,7 +20,7 @@ Strex is a catalogue and discovery experience only. It does not play, stream, sc
 - Keyboard-friendly controls, visible focus states, accessible form errors, and reduced-motion support
 - Unit and component tests with external services mocked
 
-The feature list describes the application's intended behaviour. Credential-backed OMDb and Firebase journeys still require manual verification in the environment where those services are configured; this README does not claim that those live checks have been run.
+Live OMDb search, Firebase email/password authentication, favourite writes and removals, and a two-record catalogue import were manually verified during setup. Google sign-in, profile editing, watchlist behaviour, cross-account data isolation, and a complete catalogue import should still be verified before deployment.
 
 ## Technology stack
 
@@ -48,22 +48,28 @@ The feature list describes the application's intended behaviour. Credential-back
 git clone https://github.com/ArafatShweiki/movies-site.git
 cd movies-site
 npm install
-cp .env.example .env
+cp .env.example .env.local
 ```
 
 On PowerShell, copy the environment template with:
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item .env.example .env.local
 ```
 
-Fill in `.env`, then start the development server:
+Fill in `.env.local`, then start the development server:
 
 ```bash
 npm run dev
 ```
 
-Vite prints the local URL in the terminal. Real `.env` files are ignored by Git and must not be committed.
+Vite prints the local URL in the terminal. Local environment files are ignored by Git and must not be committed.
+
+If Windows PowerShell blocks `npm.ps1`, use `npm.cmd` instead, for example:
+
+```powershell
+npm.cmd run dev
+```
 
 ## Development commands
 
@@ -78,7 +84,7 @@ Vite prints the local URL in the terminal. Real `.env` files are ignored by Git 
 
 ## Environment configuration
 
-Create `.env` from `.env.example` and provide all of the following values:
+Create `.env.local` from `.env.example` and provide all of the following values:
 
 ```dotenv
 VITE_OMDB_API_KEY=your_omdb_api_key
@@ -93,13 +99,13 @@ VITE_FIREBASE_APP_ID=your_firebase_web_app_id
 
 All variables use Vite's `VITE_` prefix and are bundled into the client application. Firebase web configuration is an identifier set, not an authorization boundary; protect user data with Authentication and Realtime Database rules. Never place service-account credentials or other server secrets in this file.
 
-The application presents configuration guidance when required variables are unavailable. Restart the Vite development server after changing `.env`.
+The application presents configuration guidance when required variables are unavailable. Restart the Vite development server after changing `.env.local`.
 
 ## OMDb setup
 
 1. Request an API key from the [OMDb API key page](https://www.omdbapi.com/apikey.aspx).
 2. Complete OMDb's activation process if required by the selected plan.
-3. Add the key to `.env` as `VITE_OMDB_API_KEY`.
+3. Add the key to `.env.local` as `VITE_OMDB_API_KEY`.
 4. Restart `npm run dev`.
 5. Confirm that the home collections, a title search, and a detail page load successfully.
 
@@ -113,7 +119,7 @@ The featured-series carousel prefers normalized series records from the public r
 
 1. Create a project in the [Firebase console](https://console.firebase.google.com/).
 2. Add a Web app from **Project settings > General > Your apps**.
-3. Copy the web configuration values into the matching `VITE_FIREBASE_*` entries in `.env`.
+3. Copy the web configuration values into the matching `VITE_FIREBASE_*` entries in `.env.local`.
 4. Ensure `VITE_FIREBASE_DATABASE_URL` exactly matches the URL shown for the Realtime Database instance, including its regional hostname when applicable.
 
 ### Enable Firebase Authentication
@@ -167,7 +173,7 @@ users/
 
 [`firebase-database-rules.json`](firebase-database-rules.json) is the canonical deployable rules file. It denies reads and writes by default, permits public read-only access to `/catalog`, and denies all client catalogue writes. An authenticated user can read and write only `/users/<their-own-uid>`. Profile, favourite, and watchlist records are type-checked, IMDb values must match their record keys, unexpected profile and item fields are rejected, and favourite or watchlist items can be deleted normally.
 
-The checked-in file is documentation and deployment input; creating it does not publish it. No Firebase project or live ruleset was changed during this implementation.
+The checked-in file is the project's source of truth, but it is not deployed automatically. Publish it manually from **Realtime Database > Rules**. During initial debugging, temporary simplified rules were used to verify favourite writes, so confirm that the live Firebase rules now match the checked-in file before submission.
 
 Firebase Admin credentials bypass client rules, which is why the trusted catalogue importer can write `/catalog` while browser clients cannot. Keep Admin credentials out of the frontend.
 
@@ -183,14 +189,21 @@ After publishing, use the Firebase Rules Playground or two separate test account
 
 ### Manual Firebase verification
 
-These credential-backed checks were not performed during automated verification and must be completed against your Firebase project:
+The following live checks were completed during setup:
 
-1. Restart the development server after configuring `.env`, then create an account with email and password and confirm the session survives a page refresh.
-2. Log out, choose Google sign-in, complete the provider flow, and confirm Strex returns to the intended protected destination.
-3. Inspect `/users/<uid>/profile` in Realtime Database and confirm only `firstName`, `lastName`, `region`, `phoneNumber`, and numeric `updatedAt` fields are present.
-4. Update the active user's profile, add and remove one favourite, and add and remove one watchlist title; refresh between actions to confirm subscriptions restore current data.
-5. Repeat with a second account and use the Rules Playground to confirm neither account can read or write the other UID.
-6. While signed out, confirm `/catalog` can be read but a browser-client catalogue write is rejected.
+- The OMDb key was activated and real title searches loaded successfully.
+- Firebase Email/Password registration and login worked.
+- Adding and removing favourites wrote to the authenticated user's Realtime Database path.
+- The catalogue importer completed a dry run and a live import limited to two records.
+
+Complete these remaining checks before deployment or final demonstration:
+
+1. Enable and test Google sign-in, including return to the intended protected page.
+2. Edit the profile and confirm the first name appears in the navigation after saving and refreshing.
+3. Add and remove a watchlist item, then refresh to confirm persistence.
+4. Repeat the private-data checks with a second account and confirm neither account can access the other UID.
+5. Confirm a signed-out browser client can read `/catalog` but cannot write to it.
+6. Confirm the live Realtime Database rules match [`firebase-database-rules.json`](firebase-database-rules.json).
 
 ## Trusted catalogue import
 
@@ -231,7 +244,7 @@ A dry run requires only `OMDB_API_KEY`; it makes zero Firebase writes and does n
 
 The first import is limited to approximately 50 unique movies selected from the configured search terms. Each record is written at `catalog/{imdbID}`, so rerunning the command updates that IMDb ID rather than creating a duplicate. The script continues past individual title failures and prints imported, skipped, and failed counts when it finishes. Firebase Admin writes bypass client security rules, so verify the target project before running it.
 
-The importer was **not run** as part of the project setup or automated verification; running it requires your real OMDb key and Firebase Admin credentials and changes the configured database.
+The importer was manually verified with both a dry run and a live two-record import. The complete import of up to approximately 50 records was not part of the documented final verification.
 
 ## Application routes
 
@@ -273,9 +286,9 @@ When a signed-out visitor requests a protected collection or starts a favourite/
 │   └── vite-env.d.ts           # Typed Vite environment variables
 ├── .env.example                # Safe environment template
 ├── AI_PROMPTS.md               # Recorded AI prompts
-├── AI_USAGE_REPORT.md          # AI-assistance reflection template
+├── AI_USAGE_REPORT.md          # Reflection on how AI assisted development
 ├── firebase-database-rules.json # Deployable Realtime Database rules
-├── STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md      # Manual-review log template
+├── MANUAL_IMPROVEMENTS.md      # Record of reviewed manual improvements
 ├── eslint.config.js
 ├── package.json
 ├── tsconfig.app.json
@@ -312,20 +325,6 @@ To inspect a completed build locally, use Vite's preview command directly if no 
 npx vite preview
 ```
 
-## Screenshot placeholders
-
-Replace these placeholders after configuring the APIs and completing a visual QA pass.
-
-| View | Suggested viewport | Screenshot to add |
-| --- | --- | --- |
-| Discovery home and featured carousel | 1440 px desktop | `docs/screenshots/home-desktop.png` |
-| Search results | 1024 px laptop | `docs/screenshots/search-results.png` |
-| Movie details | 768 px tablet | `docs/screenshots/movie-details-tablet.png` |
-| Favourites | 390 px mobile | `docs/screenshots/favourites-mobile.png` |
-| Watchlist | 390 px mobile | `docs/screenshots/watchlist-mobile.png` |
-| Authentication | 390 px mobile | `docs/screenshots/auth-mobile.png` |
-| Profile editor | 768 px tablet | `docs/screenshots/profile-tablet.png` |
-
 ## Accessibility notes
 
 - Semantic landmarks and heading structure support screen-reader navigation.
@@ -357,10 +356,9 @@ Automated checks cannot replace manual testing. Before release, test representat
 - Add end-to-end browser tests against dedicated test projects.
 - Add offline-aware caching and richer resilience for rate limits.
 - Add localized interface copy and locale-aware metadata presentation.
-- Capture and publish the screenshot set after deployment configuration is complete.
 
 ## Related project records
 
-- [AI_PROMPTS.md](AI_PROMPTS.md) records the AI prompt used for this implementation.
-- [AI_USAGE_REPORT.md](AI_USAGE_REPORT.md) provides an honest template for documenting how AI contributed.
-- [STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md](STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md) is reserved for manual review and improvement evidence.
+- [AI_PROMPTS.md](AI_PROMPTS.md) records the real prompts used during development.
+- [AI_USAGE_REPORT.md](AI_USAGE_REPORT.md) explains how AI assisted with planning, implementation, debugging, and review.
+- [MANUAL_IMPROVEMENTS.md](MANUAL_IMPROVEMENTS.md) records direct manual changes made after reviewing the AI-assisted output.
