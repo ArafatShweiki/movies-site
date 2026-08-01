@@ -1,6 +1,6 @@
 # AI Prompt Log
 
-This log records prompts used for the Strex project. Keep prompt text complete and unchanged, and record outcomes only after they are known.
+This log preserves the chronological prompts used for the Strex project. Historical outcomes describe the project status when each Codex task ended; later manual configuration and verification are recorded in the final section.
 
 ## Prompt 1
 
@@ -1411,17 +1411,29 @@ The final application should display the name exactly as:
 Strex
 ````
 
-## Future prompts
+## Final Manual Configuration and Verification
 
-Copy the template below for each future prompt. Leave it blank until another prompt is actually used.
+After the Codex implementation was completed, I manually configured and verified:
 
-### Prompt N
+- The OMDb API key and live movie requests
+- Firebase Email/Password authentication
+- Google authentication
+- Profile editing and first-name navigation display
+- Favourites and watchlist persistence
+- Data separation between two user accounts
+- Public catalogue reads and denied browser catalogue writes
+- The strict Realtime Database rules
+- A dry run and live two-record catalogue import
+- The final test, lint, and production build commands
 
-- **Date:** TODO
-- **Purpose:** TODO
-- **AI tool:** TODO
-- **Outcome:** TODO
+Final commands run:
 
-#### Complete prompt
+```powershell
+npm.cmd run test -- --run
+npm.cmd run lint
+npm.cmd run build
+```
 
-TODO: Paste the complete prompt verbatim.
+All three commands completed successfully.
+
+I did not directly edit the application source code. My contribution consisted of choosing the requirements and design direction, configuring OMDb and Firebase, testing the generated application, debugging integration problems, verifying security behaviour, and documenting the process.

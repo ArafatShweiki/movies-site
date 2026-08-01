@@ -304,9 +304,9 @@ Run the complete automated suite once:
 npm run test -- --run
 ```
 
-The tests use Vitest and React Testing Library. Network-facing OMDb and Firebase operations are mocked; the suite does not contact real services or require credentials. Coverage includes form validation and error association, email and Google authentication behaviour, profile state, protected routing, movie normalization and deduplication, carousel controls, and favourite/watchlist safeguards.
+The tests use Vitest and React Testing Library. Network-facing OMDb and Firebase operations are mocked; the automated suite does not contact real services or require credentials. Coverage includes form validation and error association, email and Google authentication behaviour, profile state, protected routing, movie normalization and deduplication, carousel controls, and favourite/watchlist safeguards.
 
-The final project verification was completed after configuration and review:
+Final verification was run after configuration and review:
 
 ```powershell
 npm.cmd run test -- --run
@@ -314,8 +314,7 @@ npm.cmd run lint
 npm.cmd run build
 ```
 
-All three commands completed successfully. Manual checks were also performed for the configured API and Firebase journeys described above.
-
+All three commands completed successfully. Live API and Firebase journeys were also checked as described in the completed verification section.
 ## Production build
 
 Create an optimized build with:
@@ -359,6 +358,24 @@ The student's hands-on work included:
 - Testing authentication, profiles, favourites, watchlists, data isolation, and catalogue permissions
 - Configuring Firebase Admin credentials and verifying the catalogue importer
 - Running the final tests, linter, and production build
+
+These contributions are documented as student-directed, AI-assisted development and manual configuration/testing, not as direct manual source-code edits.
+
+## Development and review disclosure
+
+The student selected the project requirements, branding, feature priorities, and visual direction. Codex generated and revised the application source code. The student did **not** directly edit the source code.
+
+The student's hands-on contribution included:
+
+- Choosing the **Strex** name and requesting the carousel, watchlist, profile, softer palette, first-name account display, and Google sign-in
+- Configuring and activating OMDb
+- Creating and configuring the Firebase project
+- Enabling authentication providers
+- Publishing and testing Realtime Database security rules
+- Testing authentication, profiles, favourites, watchlists, data isolation, and catalogue permissions
+- Configuring Firebase Admin credentials and verifying the catalogue importer
+- Running the final tests, linter, and production build
+- Reviewing and documenting the development process
 
 These contributions are documented as student-directed, AI-assisted development and manual configuration/testing, not as direct manual source-code edits.
 
