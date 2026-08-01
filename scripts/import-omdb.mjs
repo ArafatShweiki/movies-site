@@ -10,6 +10,7 @@ import { getDatabase } from 'firebase-admin/database'
 
 const OMDB_ENDPOINT = 'https://www.omdbapi.com/'
 const IMDB_ID_PATTERN = /^tt\d{5,12}$/i
+const CATALOG_PATH_PATTERN = /^catalog\/tt\d{5,12}$/
 const SUPPORTED_TYPES = new Set(['movie', 'series', 'episode', 'game'])
 const FIREBASE_APP_NAME = 'reelvault-catalog-importer'
 
@@ -27,6 +28,82 @@ export const SEARCH_TERMS = Object.freeze([
 export const DEFAULT_MAX_MOVIES = 50
 export const DEFAULT_CONCURRENCY = 4
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
+
+function assertMovieLimit(limit) {
+  if (
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > DEFAULT_MAX_MOVIES
+  ) {
+    throw new Error(
+      `--limit=N must be a whole number from 1 to ${DEFAULT_MAX_MOVIES}.`,
+    )
+  }
+}
+
+export function parseImporterArguments(args = process.argv.slice(2)) {
+  if (!Array.isArray(args) || args.some((argument) => typeof argument !== 'string')) {
+    throw new Error('Importer arguments must be provided as strings.')
+  }
+
+  let dryRun = false
+  let hasDryRunOption = false
+  let hasLimitOption = false
+  let maxMovies = DEFAULT_MAX_MOVIES
+
+  for (const argument of args) {
+    if (argument === '--dry-run') {
+      if (hasDryRunOption) {
+        throw new Error('--dry-run may only be provided once.')
+      }
+      hasDryRunOption = true
+      dryRun = true
+      continue
+    }
+
+    if (argument.startsWith('--limit=')) {
+      if (hasLimitOption) {
+        throw new Error('--limit=N may only be provided once.')
+      }
+
+      const rawLimit = argument.slice('--limit='.length)
+      if (!/^[1-9]\d*$/.test(rawLimit)) {
+        throw new Error(
+          `--limit=N must be a whole number from 1 to ${DEFAULT_MAX_MOVIES}.`,
+        )
+      }
+
+      maxMovies = Number(rawLimit)
+      assertMovieLimit(maxMovies)
+      hasLimitOption = true
+      continue
+    }
+
+    throw new Error(
+      `Unknown importer option "${argument}". Use --dry-run and/or --limit=N.`,
+    )
+  }
+
+  return { dryRun, maxMovies }
+}
+
+export function catalogPathForImdbID(imdbID) {
+  if (
+    typeof imdbID !== 'string' ||
+    imdbID !== imdbID.trim() ||
+    imdbID !== imdbID.toLowerCase() ||
+    !IMDB_ID_PATTERN.test(imdbID)
+  ) {
+    throw new Error('Refusing unsafe Firebase write: invalid canonical IMDb ID.')
+  }
+
+  const path = `catalog/${imdbID}`
+  if (!CATALOG_PATH_PATTERN.test(path)) {
+    throw new Error('Refusing unsafe Firebase write path.')
+  }
+
+  return path
+}
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -104,9 +181,7 @@ export function normalizeMovieDetails(payload, fetchedAt) {
 }
 
 export function selectUniqueImdbIds(searchGroups, limit = DEFAULT_MAX_MOVIES) {
-  if (!Number.isInteger(limit) || limit < 1) {
-    throw new Error('The movie import limit must be a positive whole number.')
-  }
+  assertMovieLimit(limit)
 
   const seenIds = new Set()
   const imdbIDs = []
@@ -242,22 +317,36 @@ export function createOmdbClient({
   }
 }
 
-export function createFirebaseWriter(database) {
+export function createFirebaseWriter(database, { logger = console } = {}) {
   if (!database || typeof database.ref !== 'function') {
     throw new Error('A Firebase Admin Realtime Database instance is required.')
   }
+  if (!logger || typeof logger.log !== 'function') {
+    throw new Error('A logger with a log method is required.')
+  }
 
   return async (movie) => {
-    await database.ref(`catalog/${movie.imdbID}`).set(movie)
+    if (!isRecord(movie)) {
+      throw new Error('Refusing unsafe Firebase write: movie must be an object.')
+    }
+
+    const path = catalogPathForImdbID(movie.imdbID)
+    logger.log(`Firebase write path: ${path}`)
+    await database.ref(path).set(movie)
   }
 }
 
-export function readImporterEnvironment(environment = process.env) {
-  const requiredVariables = [
-    'OMDB_API_KEY',
-    'FIREBASE_DATABASE_URL',
-    'GOOGLE_APPLICATION_CREDENTIALS',
-  ]
+export function readImporterEnvironment(
+  environment = process.env,
+  { requireFirebase = true } = {},
+) {
+  const requiredVariables = requireFirebase
+    ? [
+        'OMDB_API_KEY',
+        'FIREBASE_DATABASE_URL',
+        'GOOGLE_APPLICATION_CREDENTIALS',
+      ]
+    : ['OMDB_API_KEY']
   const missingVariables = requiredVariables.filter(
     (name) => !environment[name]?.trim(),
   )
@@ -266,6 +355,11 @@ export function readImporterEnvironment(environment = process.env) {
     throw new Error(
       `Missing required environment variables: ${missingVariables.join(', ')}.`,
     )
+  }
+
+  const apiKey = environment.OMDB_API_KEY.trim()
+  if (!requireFirebase) {
+    return { apiKey }
   }
 
   let databaseUrl
@@ -279,8 +373,20 @@ export function readImporterEnvironment(environment = process.env) {
     throw new Error('FIREBASE_DATABASE_URL must use HTTPS.')
   }
 
+  if (
+    databaseUrl.username ||
+    databaseUrl.password ||
+    databaseUrl.search ||
+    databaseUrl.hash ||
+    databaseUrl.pathname !== '/'
+  ) {
+    throw new Error(
+      'FIREBASE_DATABASE_URL must point to the HTTPS database root without credentials, a path, query, or fragment.',
+    )
+  }
+
   return {
-    apiKey: environment.OMDB_API_KEY.trim(),
+    apiKey,
     databaseUrl: databaseUrl.href,
     credentialsPath: environment.GOOGLE_APPLICATION_CREDENTIALS.trim(),
   }
@@ -310,8 +416,11 @@ export function initializeAdminDatabase(databaseUrl) {
   return getDatabase(app)
 }
 
-function printSummary(logger, stats) {
-  logger.log('Import complete.')
+function printSummary(logger, stats, { dryRun, maxMovies, planned }) {
+  logger.log('Import confirmation summary:')
+  logger.log(`Mode: ${dryRun ? 'dry run (no Firebase writes)' : 'live import'}`)
+  logger.log(`Limit: ${maxMovies}`)
+  if (dryRun) logger.log(`Would import: ${planned}`)
   logger.log(`Imported: ${stats.imported}`)
   logger.log(`Skipped: ${stats.skipped}`)
   logger.log(`Failed: ${stats.failed}`)
@@ -325,6 +434,7 @@ export async function importCatalog({
   concurrency = DEFAULT_CONCURRENCY,
   now = () => new Date(),
   logger = console,
+  dryRun = false,
 }) {
   if (!omdbClient || typeof omdbClient.search !== 'function') {
     throw new Error('An OMDb client is required.')
@@ -332,11 +442,12 @@ export async function importCatalog({
   if (typeof omdbClient.getDetails !== 'function') {
     throw new Error('The OMDb client must support full-detail requests.')
   }
-  if (typeof writeMovie !== 'function') {
+  if (!dryRun && typeof writeMovie !== 'function') {
     throw new Error('A Firebase catalogue writer is required.')
   }
 
   const stats = { imported: 0, skipped: 0, failed: 0 }
+  let planned = 0
 
   const searchOutcomes = await mapWithConcurrency(
     searchTerms,
@@ -373,8 +484,14 @@ export async function importCatalog({
           return 'skipped'
         }
 
+        const path = catalogPathForImdbID(movie.imdbID)
+        if (dryRun) {
+          logger.log(`[dry-run] Would write ${path}`)
+          return 'planned'
+        }
+
         await writeMovie(movie)
-        logger.log(`Imported ${movie.imdbID}: ${movie.title}`)
+        logger.log(`Imported ${path}`)
         return 'imported'
       } catch (error) {
         logger.error(`Failed ${imdbID}: ${readableError(error)}`)
@@ -384,28 +501,60 @@ export async function importCatalog({
   )
 
   for (const outcome of importOutcomes) {
-    stats[outcome] += 1
+    if (outcome === 'planned') planned += 1
+    else stats[outcome] += 1
   }
 
-  printSummary(logger, stats)
-  return stats
+  printSummary(logger, stats, { dryRun, maxMovies, planned })
+  return dryRun ? { ...stats, planned } : stats
 }
 
-export async function main() {
+export async function runImporter({
+  options,
+  environment = process.env,
+  logger = console,
+  omdbClientFactory = createOmdbClient,
+  databaseInitializer = initializeAdminDatabase,
+  writerFactory = createFirebaseWriter,
+} = {}) {
+  if (
+    !isRecord(options) ||
+    typeof options.dryRun !== 'boolean'
+  ) {
+    throw new Error('Parsed importer options are required.')
+  }
+  assertMovieLimit(options.maxMovies)
+
+  const configuration = readImporterEnvironment(environment, {
+    requireFirebase: !options.dryRun,
+  })
+  const omdbClient = omdbClientFactory({ apiKey: configuration.apiKey })
+  let writeMovie
+
+  if (!options.dryRun) {
+    const database = databaseInitializer(configuration.databaseUrl)
+    writeMovie = writerFactory(database, { logger })
+  }
+
+  return importCatalog({
+    omdbClient,
+    writeMovie,
+    maxMovies: options.maxMovies,
+    dryRun: options.dryRun,
+    logger,
+  })
+}
+
+export async function main(args = process.argv.slice(2)) {
+  const options = parseImporterArguments(args)
+
   loadEnvironmentFile({
     path: process.env.DOTENV_CONFIG_PATH?.trim() || '.env.seed',
     override: false,
     quiet: true,
   })
 
-  const configuration = readImporterEnvironment()
-  const database = initializeAdminDatabase(configuration.databaseUrl)
-  const omdbClient = createOmdbClient({ apiKey: configuration.apiKey })
-
-  return importCatalog({
-    omdbClient,
-    writeMovie: createFirebaseWriter(database),
-  })
+  return runImporter({ options, environment: process.env })
 }
 
 export function isDirectExecution(metaUrl, argv = process.argv) {

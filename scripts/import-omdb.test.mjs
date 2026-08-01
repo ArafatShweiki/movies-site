@@ -5,13 +5,16 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_MAX_MOVIES,
   SEARCH_TERMS,
+  catalogPathForImdbID,
   createFirebaseWriter,
   createOmdbClient,
   importCatalog,
   isDirectExecution,
   mapWithConcurrency,
   normalizeMovieDetails,
+  parseImporterArguments,
   readImporterEnvironment,
+  runImporter,
   selectUniqueImdbIds,
 } from './import-omdb.mjs'
 
@@ -65,6 +68,38 @@ describe('OMDb catalogue importer', () => {
       'science fiction',
       'comedy',
     ])
+  })
+
+  it.each([
+    [[], { dryRun: false, maxMovies: 50 }],
+    [['--dry-run'], { dryRun: true, maxMovies: 50 }],
+    [['--limit=7'], { dryRun: false, maxMovies: 7 }],
+    [
+      ['--limit=2', '--dry-run'],
+      { dryRun: true, maxMovies: 2 },
+    ],
+    [
+      ['--dry-run', '--limit=2'],
+      { dryRun: true, maxMovies: 2 },
+    ],
+  ])('parses supported importer arguments %#', (args, expected) => {
+    expect(parseImporterArguments(args)).toEqual(expected)
+  })
+
+  it.each([
+    ['--limit='],
+    ['--limit=0'],
+    ['--limit=-1'],
+    ['--limit=2.5'],
+    ['--limit=2e1'],
+    ['--limit=51'],
+    ['--limit'],
+    ['--dry-run=true'],
+    ['--dry-run', '--dry-run'],
+    ['--limit=2', '--limit=3'],
+    ['unexpected'],
+  ])('rejects unsafe or ambiguous arguments %#', (...args) => {
+    expect(() => parseImporterArguments(args)).toThrow()
   })
 
   it('normalizes N/A values and only keeps the catalogue fields', () => {
@@ -149,6 +184,138 @@ describe('OMDb catalogue importer', () => {
     expect(stats).toEqual({ imported: 50, skipped: 10, failed: 0 })
   })
 
+  it('applies --limit after deduplication and bounds detail requests and writes', async () => {
+    const { maxMovies } = parseImporterArguments(['--limit=2'])
+    const omdbClient = {
+      search: vi.fn().mockResolvedValue([
+        { imdbID: 'tt0000001' },
+        { imdbID: 'tt0000001' },
+        { imdbID: 'tt0000002' },
+        { imdbID: 'tt0000003' },
+      ]),
+      getDetails: vi.fn(async (imdbID) => detailsPayload(imdbID, `Title ${imdbID}`)),
+    }
+    const writeMovie = vi.fn().mockResolvedValue(undefined)
+
+    const stats = await importCatalog({
+      omdbClient,
+      writeMovie,
+      searchTerms: ['Batman'],
+      maxMovies,
+      now: () => new Date('2026-08-01T16:00:00.000Z'),
+      logger: silentLogger(),
+    })
+
+    expect(omdbClient.getDetails).toHaveBeenCalledTimes(2)
+    expect(writeMovie).toHaveBeenCalledTimes(2)
+    expect(stats).toEqual({ imported: 2, skipped: 2, failed: 0 })
+  })
+
+  it('dry-runs full details and normalization without calling a writer', async () => {
+    const logger = silentLogger()
+    const omdbClient = {
+      search: vi.fn().mockResolvedValue([
+        { imdbID: 'tt0000001' },
+        { imdbID: 'tt0000002' },
+        { imdbID: 'tt0000003' },
+      ]),
+      getDetails: vi.fn(async (imdbID) => {
+        if (imdbID === 'tt0000002') {
+          return detailsPayload(imdbID, 'N/A')
+        }
+        if (imdbID === 'tt0000003') {
+          throw new Error('detail request failed')
+        }
+        return detailsPayload(imdbID, `Title ${imdbID}`, { Runtime: 'N/A' })
+      }),
+    }
+
+    const stats = await importCatalog({
+      omdbClient,
+      searchTerms: ['Batman'],
+      maxMovies: 3,
+      dryRun: true,
+      now: () => new Date('2026-08-01T16:00:00.000Z'),
+      logger,
+    })
+
+    expect(omdbClient.getDetails).toHaveBeenCalledTimes(3)
+    expect(stats).toEqual({ imported: 0, skipped: 1, failed: 1, planned: 1 })
+    expect(logger.log).toHaveBeenCalledWith(
+      '[dry-run] Would write catalog/tt0000001',
+    )
+    expect(logger.log).toHaveBeenCalledWith(
+      'Mode: dry run (no Firebase writes)',
+    )
+    expect(logger.log).toHaveBeenCalledWith('Would import: 1')
+    expect(logger.log).toHaveBeenCalledWith('Imported: 0')
+    expect(logger.log).toHaveBeenCalledWith('Skipped: 1')
+    expect(logger.log).toHaveBeenCalledWith('Failed: 1')
+  })
+
+  it('does not initialize Firebase or create a writer in dry-run orchestration', async () => {
+    const omdbClient = {
+      search: vi.fn(async (term) => [{
+        imdbID: `tt${String(SEARCH_TERMS.indexOf(term) + 1).padStart(7, '0')}`,
+      }]),
+      getDetails: vi.fn(async (imdbID) => detailsPayload(imdbID, 'A title')),
+    }
+    const omdbClientFactory = vi.fn(() => omdbClient)
+    const databaseInitializer = vi.fn()
+    const writerFactory = vi.fn()
+
+    const stats = await runImporter({
+      options: parseImporterArguments(['--dry-run', '--limit=1']),
+      environment: { OMDB_API_KEY: 'test-key' },
+      logger: silentLogger(),
+      omdbClientFactory,
+      databaseInitializer,
+      writerFactory,
+    })
+
+    expect(omdbClientFactory).toHaveBeenCalledWith({ apiKey: 'test-key' })
+    expect(databaseInitializer).not.toHaveBeenCalled()
+    expect(writerFactory).not.toHaveBeenCalled()
+    expect(omdbClient.getDetails).toHaveBeenCalledTimes(1)
+    expect(stats).toEqual({ imported: 0, skipped: 7, failed: 0, planned: 1 })
+  })
+
+  it('forwards the live CLI limit, database URL, database, and logger', async () => {
+    const logger = silentLogger()
+    const omdbClient = {
+      search: vi.fn(async (term) => [{
+        imdbID: `tt${String(SEARCH_TERMS.indexOf(term) + 1).padStart(7, '0')}`,
+      }]),
+      getDetails: vi.fn(async (imdbID) => detailsPayload(imdbID, 'A title')),
+    }
+    const omdbClientFactory = vi.fn(() => omdbClient)
+    const database = { name: 'mock database' }
+    const databaseInitializer = vi.fn(() => database)
+    const writeMovie = vi.fn().mockResolvedValue(undefined)
+    const writerFactory = vi.fn(() => writeMovie)
+
+    const stats = await runImporter({
+      options: parseImporterArguments(['--limit=2']),
+      environment: {
+        OMDB_API_KEY: 'test-key',
+        FIREBASE_DATABASE_URL: 'https://project-default-rtdb.firebaseio.com',
+        GOOGLE_APPLICATION_CREDENTIALS: 'C:/secure/service-account.json',
+      },
+      logger,
+      omdbClientFactory,
+      databaseInitializer,
+      writerFactory,
+    })
+
+    expect(databaseInitializer).toHaveBeenCalledWith(
+      'https://project-default-rtdb.firebaseio.com/',
+    )
+    expect(writerFactory).toHaveBeenCalledWith(database, { logger })
+    expect(omdbClient.getDetails).toHaveBeenCalledTimes(2)
+    expect(writeMovie).toHaveBeenCalledTimes(2)
+    expect(stats).toEqual({ imported: 2, skipped: 6, failed: 0 })
+  })
+
   it('never exceeds the configured request concurrency', async () => {
     let activeRequests = 0
     let peakRequests = 0
@@ -216,12 +383,21 @@ describe('OMDb catalogue importer', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
-  it('writes reruns to the same catalog IMDb-ID path', async () => {
-    const set = vi.fn().mockResolvedValue(undefined)
-    const database = {
-      ref: vi.fn(() => ({ set })),
+  it('logs the exact safe path before reruns write to the same location', async () => {
+    const events = []
+    const logger = {
+      log: vi.fn((message) => events.push(message)),
     }
-    const writer = createFirebaseWriter(database)
+    const set = vi.fn(async () => {
+      events.push('set')
+    })
+    const database = {
+      ref: vi.fn((path) => {
+        events.push(`ref:${path}`)
+        return { set }
+      }),
+    }
+    const writer = createFirebaseWriter(database, { logger })
     const movie = normalizeMovieDetails(
       detailsPayload('tt0468569', 'The Dark Knight'),
       '2026-08-01T16:00:00.000Z',
@@ -236,6 +412,45 @@ describe('OMDb catalogue importer', () => {
     expect(database.ref).toHaveBeenNthCalledWith(2, 'catalog/tt0468569')
     expect(set).toHaveBeenNthCalledWith(1, movie)
     expect(set).toHaveBeenNthCalledWith(2, updatedMovie)
+    expect(events).toEqual([
+      'Firebase write path: catalog/tt0468569',
+      'ref:catalog/tt0468569',
+      'set',
+      'Firebase write path: catalog/tt0468569',
+      'ref:catalog/tt0468569',
+      'set',
+    ])
+  })
+
+  it('refuses every non-canonical or nested Firebase catalogue path', async () => {
+    const database = {
+      ref: vi.fn(() => ({ set: vi.fn() })),
+    }
+    const logger = { log: vi.fn() }
+    const writer = createFirebaseWriter(database, { logger })
+
+    expect(catalogPathForImdbID('tt0468569')).toBe('catalog/tt0468569')
+
+    for (const imdbID of [
+      'TT0468569',
+      ' tt0468569',
+      'tt0468569/other',
+      '../users',
+      'tt0468569.other',
+      'tt0468569#',
+      'tt0468569$child',
+      'tt0468569[0]',
+      'tt0468569\n',
+      'tt12',
+      '',
+      null,
+    ]) {
+      await expect(writer({ imdbID })).rejects.toThrow(/Refusing unsafe Firebase write/)
+    }
+
+    await expect(writer(null)).rejects.toThrow(/movie must be an object/)
+    expect(database.ref).not.toHaveBeenCalled()
+    expect(logger.log).not.toHaveBeenCalled()
   })
 
   it('continues after search, detail, and write failures and prints counts', async () => {
@@ -302,6 +517,13 @@ describe('OMDb catalogue importer', () => {
       databaseUrl: 'https://project-default-rtdb.firebaseio.com/',
       credentialsPath: 'C:/secure/service-account.json',
     })
+
+    expect(
+      readImporterEnvironment(
+        { OMDB_API_KEY: ' dry-run-key ' },
+        { requireFirebase: false },
+      ),
+    ).toEqual({ apiKey: 'dry-run-key' })
   })
 
   it('rejects whitespace-only and insecure database configuration', () => {
@@ -328,6 +550,21 @@ describe('OMDb catalogue importer', () => {
         GOOGLE_APPLICATION_CREDENTIALS: 'C:/secure/service-account.json',
       }),
     ).toThrow(/must use HTTPS/)
+  })
+
+  it.each([
+    'https://project-default-rtdb.firebaseio.com/catalog',
+    'https://user:password@project-default-rtdb.firebaseio.com',
+    'https://project-default-rtdb.firebaseio.com/?target=catalog',
+    'https://project-default-rtdb.firebaseio.com/#catalog',
+  ])('rejects a Firebase URL that is not an unqualified database root: %s', (url) => {
+    expect(() =>
+      readImporterEnvironment({
+        OMDB_API_KEY: 'key',
+        FIREBASE_DATABASE_URL: url,
+        GOOGLE_APPLICATION_CREDENTIALS: 'C:/secure/service-account.json',
+      }),
+    ).toThrow(/must point to the HTTPS database root/)
   })
 
   it('only runs main when Node invokes this script directly', () => {

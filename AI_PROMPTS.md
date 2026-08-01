@@ -822,6 +822,37 @@ firebase-admin*.json
 Do not execute the importer yet. First run its automated tests, lint, and production build. Explain exactly which environment variables I must configure.
 ```
 
+## Prompt 3
+
+- **Date:** 2026-08-01
+- **Purpose:** Add safe dry-run and import-limit CLI controls to the trusted OMDb catalogue importer.
+- **AI tool:** OpenAI Codex
+- **Outcome:** Added strict `--dry-run` and `--limit=N` handling, isolated dry runs from Firebase, validated and logged exact catalogue paths before writes, expanded offline safety tests, and documented the commands. The final suite passed with 13 test files and 97 tests; ESLint and the production build passed. The importer was intentionally not executed.
+
+### Complete prompt
+
+```text
+Update the existing scripts/import-omdb.mjs importer to support:
+
+1. A --dry-run option that retrieves and normalizes movies but performs no Firebase writes.
+2. A --limit=N option that limits the total number of imported movies.
+3. Clear logging of the exact Firebase path before each write.
+4. A safety check that refuses to write anywhere except catalog/{imdbID}.
+5. A confirmation summary showing imported, skipped, and failed counts.
+
+Do not modify the React frontend.
+
+After the change, run:
+npm.cmd run test -- --run
+npm.cmd run lint
+npm.cmd run build
+
+Then give me the exact commands for:
+- a dry run limited to 2 movies
+- a real import limited to 2 movies
+- the complete import
+```
+
 ## Future prompts
 
 Copy the template below for each future prompt. Leave it blank until another prompt is actually used.

@@ -206,8 +206,23 @@ Prefer storing the service-account file outside the repository. If it must be ke
 After confirming the target database URL, service-account project, credentials, and database rules, run the importer intentionally:
 
 ```bash
-npm run seed:movies
+npm.cmd run seed:movies
 ```
+
+The importer accepts `--dry-run` and `--limit=N`. `--limit=N` must be an integer from 1 through 50. Arguments after `--` are forwarded through npm to the importer:
+
+```bash
+# Preview two normalized records without connecting to or writing to Firebase
+npm.cmd run seed:movies -- --dry-run --limit=2
+
+# Import two records into the configured Firebase database
+npm.cmd run seed:movies -- --limit=2
+
+# Run the complete first import (up to approximately 50 records)
+npm.cmd run seed:movies
+```
+
+A dry run requires only `OMDB_API_KEY`; it makes zero Firebase writes and does not require `FIREBASE_DATABASE_URL` or `GOOGLE_APPLICATION_CREDENTIALS`. Every real import requires all three variables. Use a small real limit first if you want to confirm the target database shape before the complete import.
 
 The first import is limited to approximately 50 unique movies selected from the configured search terms. Each record is written at `catalog/{imdbID}`, so rerunning the command updates that IMDb ID rather than creating a duplicate. The script continues past individual title failures and prints imported, skipped, and failed counts when it finishes. Firebase Admin writes bypass client security rules, so verify the target project before running it.
 
