@@ -1,35 +1,33 @@
 # AI Usage Report
 
-This file is a reflection template. Complete it after reviewing the generated work. Replace each TODO with specific, truthful evidence; do not describe an activity that did not occur.
-
 ## How AI assisted
 
-TODO: Summarize the parts of the Strex assignment for which AI assistance was actually used.
+AI was used to help plan and build the Strex React application. It assisted with the component structure, OMDb integration, Firebase Authentication, Realtime Database services, testing, accessibility, and project documentation.
 
 ## Planning assistance
 
-TODO: Describe any architecture, sequencing, requirements analysis, or risk identification suggested by AI that you reviewed and adopted.
+AI helped divide the application into reusable pages, components, hooks, contexts, and services. I reviewed the suggested architecture before using it.
 
 ## Code-generation assistance
 
-TODO: Identify the components, services, tests, styles, or documentation that AI helped generate. Note what you subsequently inspected or changed yourself.
+Codex generated much of the initial React and TypeScript implementation, including the homepage, movie cards, authentication pages, favourites, Watchlist, profile page, carousel, Firebase services, tests, and styles.
 
 ## Debugging assistance
 
-TODO: Record only debugging sessions that actually occurred, including the symptom, the AI suggestion, the evidence you checked, and the final resolution.
+AI helped me resolve the Windows PowerShell npm restriction, activate and test the OMDb API key, configure Firebase Authentication, correct Realtime Database permissions, and fix the Firebase Admin credential path used by the catalogue importer.
 
 ## Code-review assistance
 
-TODO: Explain any accessibility, security, maintainability, performance, or correctness feedback provided by AI and how you validated it.
+AI suggested improvements involving accessibility, Firebase security rules, environment-variable safety, responsive layouts, duplicate prevention, and separation between frontend and administrative Firebase code.
 
 ## Decisions I made myself
 
-TODO: List your own design and engineering decisions, including suggestions you rejected or modified and the reasons for doing so.
+I chose the name Strex. I requested the featured-series carousel, the separate Watchlist, the profile editor, Google sign-in, softer colours, and displaying the user's first name instead of their email.
 
 ## What I learned
 
-TODO: Reflect on specific technical or design concepts you learned while reading, testing, and improving the project.
+I learned how React communicates with REST APIs, how Firebase Authentication identifies users, how Realtime Database paths and security rules work, how environment variables are used, and why Firebase Admin credentials must never be placed in frontend code.
 
 ## Limitations of AI-generated output
 
-TODO: Document limitations you observed, such as assumptions that required checking, missing product context, visual details that needed human judgment, or behaviours that could only be verified with configured external services.
+AI could not configure or verify my real Firebase and OMDb accounts by itself. I had to activate the API key, configure Firebase providers and rules, test authentication and favourites, provide the Admin credential path, and verify the catalogue import manually.
