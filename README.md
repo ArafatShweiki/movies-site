@@ -20,7 +20,7 @@ Strex is a catalogue and discovery experience only. It does not play, stream, sc
 - Keyboard-friendly controls, visible focus states, accessible form errors, and reduced-motion support
 - Unit and component tests with external services mocked
 
-Live OMDb search, Firebase email/password authentication, favourite writes and removals, and a two-record catalogue import were manually verified during setup. Google sign-in, profile editing, watchlist behaviour, cross-account data isolation, and a complete catalogue import should still be verified before deployment.
+Live OMDb search, Firebase email/password authentication, Google sign-in, profile editing, first-name navigation display, favourites, watchlist persistence, cross-account data isolation, public catalogue reads, denied browser catalogue writes, and a two-record catalogue import were manually verified. The strict Realtime Database rules were published before final verification. A complete catalogue import of up to approximately 50 records was not required for this verification.
 
 ## Technology stack
 
@@ -173,7 +173,7 @@ users/
 
 [`firebase-database-rules.json`](firebase-database-rules.json) is the canonical deployable rules file. It denies reads and writes by default, permits public read-only access to `/catalog`, and denies all client catalogue writes. An authenticated user can read and write only `/users/<their-own-uid>`. Profile, favourite, and watchlist records are type-checked, IMDb values must match their record keys, unexpected profile and item fields are rejected, and favourite or watchlist items can be deleted normally.
 
-The checked-in file is the project's source of truth, but it is not deployed automatically. Publish it manually from **Realtime Database > Rules**. During initial debugging, temporary simplified rules were used to verify favourite writes, so confirm that the live Firebase rules now match the checked-in file before submission.
+The checked-in file is the project's source of truth and does not deploy automatically. Its strict rules were copied to **Realtime Database > Rules**, published, and used during the final live verification. Temporary simplified rules were used only during early debugging and are no longer the intended live configuration.
 
 Firebase Admin credentials bypass client rules, which is why the trusted catalogue importer can write `/catalog` while browser clients cannot. Keep Admin credentials out of the frontend.
 
@@ -187,23 +187,21 @@ After publishing, use the Firebase Rules Playground or two separate test account
 - Blank or overlong profile names and malformed phone values are rejected (an empty Google-sourced name is allowed only during initial profile creation when Google supplies no corresponding name part).
 - Deleting an item from the active user's favourites or watchlist succeeds.
 
-### Manual Firebase verification
+### Completed live Firebase verification
 
-The following live checks were completed during setup:
+The following checks were completed against the configured Firebase project:
 
-- The OMDb key was activated and real title searches loaded successfully.
-- Firebase Email/Password registration and login worked.
-- Adding and removing favourites wrote to the authenticated user's Realtime Database path.
+- The OMDb key was activated, and real homepage, search, and title-detail requests loaded successfully.
+- Firebase Email/Password registration, login, logout, and restored sessions worked.
+- Google sign-in completed successfully.
+- Profile information saved under the authenticated UID, and the first name appeared in the navigation.
+- Favourites and watchlist items could be added, restored after refresh, and removed.
+- A second account could not access the first account's private profile or collections.
+- A signed-out client could read the public `/catalog` data but could not write to it.
+- The strict checked-in Realtime Database rules were published and verified.
 - The catalogue importer completed a dry run and a live import limited to two records.
 
-Complete these remaining checks before deployment or final demonstration:
-
-1. Enable and test Google sign-in, including return to the intended protected page.
-2. Edit the profile and confirm the first name appears in the navigation after saving and refreshing.
-3. Add and remove a watchlist item, then refresh to confirm persistence.
-4. Repeat the private-data checks with a second account and confirm neither account can access the other UID.
-5. Confirm a signed-out browser client can read `/catalog` but cannot write to it.
-6. Confirm the live Realtime Database rules match [`firebase-database-rules.json`](firebase-database-rules.json).
+These checks confirm the configured development project. A deployment should still add its production domain to Firebase Authentication's authorized domains and repeat the main sign-in and data-access journeys after deployment.
 
 ## Trusted catalogue import
 
@@ -244,7 +242,7 @@ A dry run requires only `OMDB_API_KEY`; it makes zero Firebase writes and does n
 
 The first import is limited to approximately 50 unique movies selected from the configured search terms. Each record is written at `catalog/{imdbID}`, so rerunning the command updates that IMDb ID rather than creating a duplicate. The script continues past individual title failures and prints imported, skipped, and failed counts when it finishes. Firebase Admin writes bypass client security rules, so verify the target project before running it.
 
-The importer was manually verified with both a dry run and a live two-record import. The complete import of up to approximately 50 records was not part of the documented final verification.
+The importer was verified with both a dry run and a live two-record import. The complete import of up to approximately 50 records was not part of the final verification.
 
 ## Application routes
 
@@ -287,8 +285,9 @@ When a signed-out visitor requests a protected collection or starts a favourite/
 ├── .env.example                # Safe environment template
 ├── AI_PROMPTS.md               # Recorded AI prompts
 ├── AI_USAGE_REPORT.md          # Reflection on how AI assisted development
+├── STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md
+│                                # Student requests and AI-assisted refinements
 ├── firebase-database-rules.json # Deployable Realtime Database rules
-├── MANUAL_IMPROVEMENTS.md      # Record of reviewed manual improvements
 ├── eslint.config.js
 ├── package.json
 ├── tsconfig.app.json
@@ -305,9 +304,17 @@ Run the complete automated suite once:
 npm run test -- --run
 ```
 
-The tests use Vitest and React Testing Library. Network-facing OMDb and Firebase operations are mocked; the suite must not contact real services or require credentials. Coverage includes form validation and error association, email and Google authentication behaviour, profile state, protected routing, movie normalization and deduplication, carousel controls, and favourite/watchlist safeguards. Consult the latest test-run output rather than treating this documentation as proof that every test passed.
+The tests use Vitest and React Testing Library. Network-facing OMDb and Firebase operations are mocked; the suite does not contact real services or require credentials. Coverage includes form validation and error association, email and Google authentication behaviour, profile state, protected routing, movie normalization and deduplication, carousel controls, and favourite/watchlist safeguards.
 
-For an additional manual pass, verify the interface at approximately 360 px, 768 px, 1024 px, and 1440 px; navigate every interactive control by keyboard; test with reduced motion enabled; and use separate Firebase accounts to confirm data isolation.
+The final project verification was completed after configuration and review:
+
+```powershell
+npm.cmd run test -- --run
+npm.cmd run lint
+npm.cmd run build
+```
+
+All three commands completed successfully. Manual checks were also performed for the configured API and Firebase journeys described above.
 
 ## Production build
 
@@ -338,6 +345,23 @@ npx vite preview
 
 Automated checks cannot replace manual testing. Before release, test representative journeys with a keyboard and a screen reader, validate zoom and reflow, and confirm contrast using the final rendered interface.
 
+## Development and review disclosure
+
+The project requirements, branding, feature choices, and visual changes were directed by the student, while Codex was used to generate and revise the application source code. The student did **not** directly edit the source code.
+
+The student's hands-on work included:
+
+- Choosing the **Strex** name and requesting the carousel, watchlist, profile, softer palette, first-name account display, and Google sign-in
+- Configuring and activating OMDb
+- Creating and configuring the Firebase project
+- Enabling authentication providers
+- Publishing and testing Realtime Database security rules
+- Testing authentication, profiles, favourites, watchlists, data isolation, and catalogue permissions
+- Configuring Firebase Admin credentials and verifying the catalogue importer
+- Running the final tests, linter, and production build
+
+These contributions are documented as student-directed, AI-assisted development and manual configuration/testing, not as direct manual source-code edits.
+
 ## Known limitations
 
 - A valid OMDb key and configured Firebase project are required for full end-to-end operation.
@@ -359,6 +383,6 @@ Automated checks cannot replace manual testing. Before release, test representat
 
 ## Related project records
 
-- [AI_PROMPTS.md](AI_PROMPTS.md) records the real prompts used during development.
+- [AI_PROMPTS.md](AI_PROMPTS.md) records the detailed prompts sent to Codex during development.
 - [AI_USAGE_REPORT.md](AI_USAGE_REPORT.md) explains how AI assisted with planning, implementation, debugging, and review.
-- [MANUAL_IMPROVEMENTS.md](MANUAL_IMPROVEMENTS.md) records direct manual changes made after reviewing the AI-assisted output.
+- [STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md](STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md) records the student's requests, product decisions, and AI-assisted refinements. It also states that no direct source-code edits were made by the student.
