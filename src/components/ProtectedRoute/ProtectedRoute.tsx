@@ -4,9 +4,13 @@ import { useAuth } from '../../hooks/useAuth'
 
 interface ProtectedRouteProps {
   children: ReactNode
+  message?: string
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  message = 'Sign in to access this page.',
+}: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const location = useLocation()
 
@@ -14,7 +18,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="route-loading" role="status">
         <span className="spinner" aria-hidden="true" />
-        Checking your vault…
+        Checking your account…
       </div>
     )
   }
@@ -25,8 +29,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         to="/auth"
         replace
         state={{
-          from: `${location.pathname}${location.search}`,
-          message: 'Sign in to open your favourites.',
+          from: `${location.pathname}${location.search}${location.hash}`,
+          message,
         }}
       />
     )

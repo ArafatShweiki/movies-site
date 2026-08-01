@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../../components/EmptyState/EmptyState'
 import { ErrorState } from '../../components/ErrorState/ErrorState'
+import { FeaturedSeriesCarousel } from '../../components/FeaturedSeriesCarousel/FeaturedSeriesCarousel'
 import { HeroBanner } from '../../components/HeroBanner/HeroBanner'
 import { CardSkeletons, HeroSkeleton } from '../../components/LoadingSkeleton/LoadingSkeleton'
 import { MovieRow } from '../../components/MovieRow/MovieRow'
@@ -12,7 +13,9 @@ import {
   loadCuratedCollections,
   type CuratedMovieCollection,
 } from '../../services/omdbService'
-import type { MovieDetails } from '../../types/movie'
+import { loadFeaturedSeries } from '../../services/catalogService'
+import { firebaseDatabase } from '../../services/firebase'
+import type { FeaturedSeriesSlide, MovieDetails } from '../../types/movie'
 import { deduplicateMovies } from '../../utils/movieHelpers'
 import { readableError } from '../../utils/validation'
 
@@ -29,6 +32,7 @@ function HomeLoadingState() {
   return (
     <div className="home-loading" role="status">
       <span className="visually-hidden">Loading curated movie collections…</span>
+      <FeaturedSeriesCarousel series={[]} loading />
       <HeroSkeleton />
       <div className="page-width home-loading__rows">
         {[0, 1, 2].map((row) => (
@@ -52,6 +56,10 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [hasPartialFailure, setHasPartialFailure] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [featuredSeries, setFeaturedSeries] = useState<readonly FeaturedSeriesSlide[]>([])
+  const [featuredSeriesLoading, setFeaturedSeriesLoading] = useState(true)
+  const [featuredSeriesError, setFeaturedSeriesError] = useState('')
+  const [featuredAttempt, setFeaturedAttempt] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -78,6 +86,35 @@ export default function HomePage() {
       controller.abort()
     }
   }, [attempt])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    let isActive = true
+
+    void loadFeaturedSeries(firebaseDatabase, { signal: controller.signal })
+      .then((series) => {
+        if (!isActive || controller.signal.aborted) return
+        setFeaturedSeries(series)
+        setFeaturedSeriesError('')
+      })
+      .catch((requestError: unknown) => {
+        if (!isActive || controller.signal.aborted) return
+        setFeaturedSeries([])
+        setFeaturedSeriesError(
+          readableError(requestError, 'Unable to load featured series right now.'),
+        )
+      })
+      .finally(() => {
+        if (isActive && !controller.signal.aborted) {
+          setFeaturedSeriesLoading(false)
+        }
+      })
+
+    return () => {
+      isActive = false
+      controller.abort()
+    }
+  }, [featuredAttempt])
 
   const allMovies = useMemo(
     () => deduplicateMovies(collections.flatMap((collection) => collection.movies)),
@@ -153,6 +190,17 @@ export default function HomePage() {
 
   return (
     <div className="home-page">
+      <h1 className="visually-hidden">Strex movie and television discovery</h1>
+      <FeaturedSeriesCarousel
+        series={featuredSeries}
+        loading={featuredSeriesLoading}
+        error={featuredSeriesError}
+        onRetry={() => {
+          setFeaturedSeriesLoading(true)
+          setFeaturedSeriesError('')
+          setFeaturedAttempt((current) => current + 1)
+        }}
+      />
       <HeroBanner movie={heroMovie} details={heroDetails} />
       <div className="page-width discovery-sections">
         <div className="curation-note">

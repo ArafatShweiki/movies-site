@@ -3,8 +3,7 @@
   .navbar { gap: 0.8rem; }
   .navbar__links a { padding-inline: 0.55rem; }
   .navbar__search { min-width: 11rem; }
-  .user-menu__email { display: none; }
-  .user-menu summary { padding-right: 0.28rem; }
+  .user-menu__trigger { padding-right: 0.42rem; }
   .details-hero__layout { grid-template-columns: minmax(12rem, 17rem) minmax(0, 1fr); }
   .details-content { grid-template-columns: minmax(0, 1.4fr) minmax(15rem, 0.8fr); gap: 2.5rem; }
   .auth-page { gap: 3rem; }
@@ -24,23 +23,25 @@
   .brand { order: 1; margin-right: auto; }
   .navbar__links { order: 2; }
   .navbar__account { order: 3; min-width: 0; }
+  .user-menu__name { display: none; }
   .navbar__search { order: 4; width: 100%; min-width: 100%; }
   .navbar__links a:first-child { display: none; }
-  .button--nav { min-height: 2.55rem; padding: 0.55rem 0.85rem; font-size: 0.78rem; }
+  .button--nav { min-height: 2.75rem; padding: 0.55rem 0.85rem; font-size: 0.78rem; }
   .search-form--compact { max-width: none; }
   .search-form--compact input { min-height: 3.4rem; }
   .search-form--compact .search-form__submit { min-height: 2.75rem; }
 
   .global-alert { top: 7.5rem; }
+  .global-alert--watchlist { top: 11.7rem; }
   .hero { min-height: 40rem; margin-top: -7.3rem; padding-top: 12rem; }
   .hero__backdrop { background-position: 62% 20%; opacity: 0.42; }
   .hero__veil {
     background:
-      linear-gradient(90deg, rgba(9, 9, 14, 0.94), rgba(9, 9, 14, 0.38)),
-      linear-gradient(0deg, var(--color-bg) 0%, rgba(9, 9, 14, 0.2) 45%, rgba(9, 9, 14, 0.58));
+      linear-gradient(90deg, rgba(21, 23, 29, 0.94), rgba(21, 23, 29, 0.38)),
+      linear-gradient(0deg, var(--color-bg) 0%, rgba(21, 23, 29, 0.2) 45%, rgba(21, 23, 29, 0.58));
   }
   .hero__content { padding-bottom: 3.5rem; }
-  .hero h1 { font-size: clamp(2.75rem, 13vw, 5rem); }
+  .hero h2 { font-size: clamp(2.75rem, 13vw, 5rem); }
   .hero__plot { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; }
 
   .curation-note { align-items: flex-start; border-radius: var(--radius-md); }
@@ -80,7 +81,8 @@
 @media (max-width: 35rem) {
   .brand { font-size: 0.95rem; }
   .brand__mark { width: 1.8rem; height: 1.8rem; }
-  .navbar__links a { font-size: 0.75rem; }
+  .navbar__links { gap: 0; }
+  .navbar__links a { padding-inline: 0.45rem; font-size: 0.72rem; }
   .search-form__submit { min-width: auto; }
   .hero { min-height: 36rem; }
   .hero__meta { gap: 0.35rem; }

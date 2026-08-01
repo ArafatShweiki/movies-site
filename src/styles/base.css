@@ -16,8 +16,8 @@ body {
   margin: 0;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 78% 8%, rgba(130, 74, 190, 0.09), transparent 26rem),
-    radial-gradient(circle at 8% 40%, rgba(218, 103, 160, 0.05), transparent 25rem),
+    radial-gradient(circle at 78% 8%, rgba(146, 130, 174, 0.08), transparent 28rem),
+    radial-gradient(circle at 8% 40%, rgba(125, 153, 151, 0.055), transparent 27rem),
     var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -81,8 +81,8 @@ h3 {
 }
 
 ::selection {
-  background: rgba(185, 148, 255, 0.35);
-  color: white;
+  background: rgba(170, 154, 200, 0.38);
+  color: var(--color-text);
 }
 
 :focus-visible {
@@ -166,25 +166,25 @@ h3 {
 
 .button--accent {
   background: var(--gradient-accent);
-  box-shadow: 0 8px 28px rgba(157, 108, 245, 0.26);
-  color: #100b17;
+  box-shadow: 0 8px 26px rgba(118, 103, 145, 0.2);
+  color: #1d1a22;
 }
 
 .button--accent:hover:not(:disabled) {
-  box-shadow: 0 11px 34px rgba(157, 108, 245, 0.38);
+  box-shadow: 0 11px 32px rgba(118, 103, 145, 0.28);
 }
 
 .button--ghost,
 .button--nav {
   border-color: var(--color-border-strong);
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(225, 228, 235, 0.055);
   color: var(--color-text);
 }
 
 .button--ghost:hover:not(:disabled),
 .button--nav:hover:not(:disabled) {
-  border-color: rgba(185, 148, 255, 0.48);
-  background: rgba(185, 148, 255, 0.1);
+  border-color: rgba(170, 154, 200, 0.48);
+  background: rgba(170, 154, 200, 0.1);
 }
 
 .button--text {
@@ -201,6 +201,6 @@ code {
   border: 1px solid var(--color-border);
   border-radius: 0.35rem;
   background: var(--color-surface-soft);
-  color: #dcc8ff;
+  color: #cfc4df;
   font-size: 0.9em;
 }

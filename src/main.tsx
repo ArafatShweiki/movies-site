@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { App } from './App'
 import { AuthProvider } from './context/AuthContext'
 import { FavouritesProvider } from './context/FavouritesContext'
+import { WatchlistProvider } from './context/WatchlistContext'
 import './index.css'
 
 const rootElement = document.getElementById('root')
@@ -17,7 +18,9 @@ createRoot(rootElement).render(
     <BrowserRouter>
       <AuthProvider>
         <FavouritesProvider>
-          <App />
+          <WatchlistProvider>
+            <App />
+          </WatchlistProvider>
         </FavouritesProvider>
       </AuthProvider>
     </BrowserRouter>

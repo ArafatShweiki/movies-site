@@ -35,8 +35,8 @@ export function FavouriteButton({
     if (!user) {
       navigate('/auth', {
         state: {
-          from: `${location.pathname}${location.search}`,
-          message: 'Sign in to save titles to your personal vault.',
+          from: `${location.pathname}${location.search}${location.hash}`,
+          message: 'Sign in to save titles to your favourites.',
         },
       })
       return

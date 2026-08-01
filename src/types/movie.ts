@@ -35,6 +35,15 @@ export interface MovieDetails extends MovieSummary {
   readonly totalSeasons: string | null
 }
 
+export interface FeaturedSeriesSlide
+  extends Omit<MovieSummary, 'poster' | 'type'> {
+  readonly type: 'series'
+  readonly poster: string
+  readonly plot: string
+  readonly genres: readonly string[]
+  readonly imdbRating: string | null
+}
+
 export interface MovieSearchResult {
   readonly query: string
   readonly page: number

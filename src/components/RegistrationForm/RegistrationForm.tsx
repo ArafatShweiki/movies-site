@@ -5,18 +5,23 @@ import {
   validateRegistrationFields,
   type FieldErrors,
 } from '../../utils/validation'
+import type { RegistrationDetails } from '../../types/auth'
 
 interface RegistrationFormProps {
-  onSubmit: (email: string, password: string) => Promise<void>
+  onSubmit: (details: RegistrationDetails) => Promise<void>
 }
 
 export function RegistrationForm({ onSubmit }: RegistrationFormProps) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const firstNameId = useId()
+  const lastNameId = useId()
   const emailId = useId()
   const passwordId = useId()
   const confirmId = useId()
@@ -26,7 +31,13 @@ export function RegistrationForm({ onSubmit }: RegistrationFormProps) {
     event.preventDefault()
     if (isSubmitting) return
 
-    const nextErrors = validateRegistrationFields(email, password, confirmPassword)
+    const nextErrors = validateRegistrationFields(
+      firstName,
+      lastName,
+      email,
+      password,
+      confirmPassword,
+    )
     setErrors(nextErrors)
     setFormError('')
 
@@ -34,7 +45,12 @@ export function RegistrationForm({ onSubmit }: RegistrationFormProps) {
 
     setIsSubmitting(true)
     try {
-      await onSubmit(email.trim(), password)
+      await onSubmit({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+      })
     } catch (error) {
       setFormError(readableError(error, 'Unable to create your account. Please try again.'))
       requestAnimationFrame(() => formErrorRef.current?.focus())
@@ -44,6 +60,8 @@ export function RegistrationForm({ onSubmit }: RegistrationFormProps) {
   }
 
   function resetForm() {
+    setFirstName('')
+    setLastName('')
     setEmail('')
     setPassword('')
     setConfirmPassword('')
@@ -65,6 +83,52 @@ export function RegistrationForm({ onSubmit }: RegistrationFormProps) {
       )}
       <fieldset disabled={isSubmitting}>
         <legend>Create account credentials</legend>
+        <div className="field-group">
+          <label htmlFor={firstNameId}>First name</label>
+          <input
+            id={firstNameId}
+            name="firstName"
+            type="text"
+            value={firstName}
+            onChange={(event) => {
+              setFirstName(event.target.value)
+              if (errors.firstName) {
+                setErrors((current) => ({ ...current, firstName: undefined }))
+              }
+            }}
+            autoComplete="given-name"
+            aria-invalid={Boolean(errors.firstName)}
+            aria-describedby={errors.firstName ? `${firstNameId}-error` : undefined}
+          />
+          {errors.firstName && (
+            <p className="field-error" id={`${firstNameId}-error`}>
+              {errors.firstName}
+            </p>
+          )}
+        </div>
+        <div className="field-group">
+          <label htmlFor={lastNameId}>Last name</label>
+          <input
+            id={lastNameId}
+            name="lastName"
+            type="text"
+            value={lastName}
+            onChange={(event) => {
+              setLastName(event.target.value)
+              if (errors.lastName) {
+                setErrors((current) => ({ ...current, lastName: undefined }))
+              }
+            }}
+            autoComplete="family-name"
+            aria-invalid={Boolean(errors.lastName)}
+            aria-describedby={errors.lastName ? `${lastNameId}-error` : undefined}
+          />
+          {errors.lastName && (
+            <p className="field-error" id={`${lastNameId}-error`}>
+              {errors.lastName}
+            </p>
+          )}
+        </div>
         <div className="field-group">
           <label htmlFor={emailId}>Email address</label>
           <input

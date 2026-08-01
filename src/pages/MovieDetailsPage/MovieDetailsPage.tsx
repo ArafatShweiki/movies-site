@@ -4,6 +4,7 @@ import { ErrorState } from '../../components/ErrorState/ErrorState'
 import { FavouriteButton } from '../../components/FavouriteButton/FavouriteButton'
 import { DetailsSkeleton } from '../../components/LoadingSkeleton/LoadingSkeleton'
 import { PosterArtwork } from '../../components/PosterArtwork/PosterArtwork'
+import { WatchlistButton } from '../../components/WatchlistButton/WatchlistButton'
 import { getMovieDetails, OmdbError } from '../../services/omdbService'
 import type { MovieDetails } from '../../types/movie'
 import { formatMovieType, isValidImdbId } from '../../utils/movieHelpers'
@@ -92,7 +93,7 @@ export default function MovieDetailsPage() {
         <ErrorState
           headingLevel="h1"
           title="That title ID is not valid"
-          message="ReelVault uses IMDb title IDs such as tt0133093. Check the link and try again."
+          message="Strex uses IMDb title IDs such as tt0133093. Check the link and try again."
         />
         <Link className="button button--ghost" to="/">Browse titles</Link>
       </div>
@@ -167,7 +168,10 @@ export default function MovieDetailsPage() {
                 <p className="details-rating"><span aria-hidden="true">★</span> <strong>{movie.imdbRating}</strong><span>/10 IMDb</span></p>
               )}
               {movie.plot && <p className="details-plot">{movie.plot}</p>}
-              <FavouriteButton movie={movie} showLabel />
+              <div className="details-hero__actions">
+                <FavouriteButton movie={movie} showLabel />
+                <WatchlistButton movie={movie} showLabel />
+              </div>
             </div>
           </div>
         </div>

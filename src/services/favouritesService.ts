@@ -7,6 +7,11 @@ import {
   type Unsubscribe,
 } from 'firebase/database'
 import type { MovieSummary, MovieType } from '../types/movie'
+import {
+  requireAuthenticatedUserId,
+  requireRealtimeDatabase,
+  userCollectionPath,
+} from './userCollectionService'
 
 interface FavouriteDatabaseRecord {
   imdbID: string
@@ -34,27 +39,8 @@ export class FavouritesConfigurationError extends Error {
   }
 }
 
-function requireUserId(userId: string | null | undefined): string {
-  const normalizedUserId = userId?.trim()
-
-  if (!normalizedUserId) {
-    throw new AuthenticationRequiredError()
-  }
-
-  return normalizedUserId
-}
-
-function requireDatabase(database: Database | null): Database {
-  if (!database) {
-    throw new FavouritesConfigurationError()
-  }
-
-  return database
-}
-
 function favouritePath(userId: string, imdbID?: string): string {
-  const basePath = `users/${userId}/favourites`
-  return imdbID ? `${basePath}/${imdbID}` : basePath
+  return userCollectionPath(userId, 'favourites', imdbID)
 }
 
 function toDatabaseRecord(movie: MovieSummary): FavouriteDatabaseRecord {
@@ -133,8 +119,14 @@ export function subscribeToFavourites(
   handleValue: (favourites: FavouriteMap) => void,
   handleError: (error: Error) => void,
 ): Unsubscribe {
-  const activeUserId = requireUserId(userId)
-  const activeDatabase = requireDatabase(database)
+  const activeUserId = requireAuthenticatedUserId(
+    userId,
+    () => new AuthenticationRequiredError(),
+  )
+  const activeDatabase = requireRealtimeDatabase(
+    database,
+    () => new FavouritesConfigurationError(),
+  )
 
   return onValue(
     ref(activeDatabase, favouritePath(activeUserId)),
@@ -151,8 +143,14 @@ export async function addFavouriteForUser(
   userId: string | null | undefined,
   movie: MovieSummary,
 ): Promise<void> {
-  const activeUserId = requireUserId(userId)
-  const activeDatabase = requireDatabase(database)
+  const activeUserId = requireAuthenticatedUserId(
+    userId,
+    () => new AuthenticationRequiredError(),
+  )
+  const activeDatabase = requireRealtimeDatabase(
+    database,
+    () => new FavouritesConfigurationError(),
+  )
 
   await set(
     ref(activeDatabase, favouritePath(activeUserId, movie.imdbID)),
@@ -165,8 +163,14 @@ export async function removeFavouriteForUser(
   userId: string | null | undefined,
   imdbID: string,
 ): Promise<void> {
-  const activeUserId = requireUserId(userId)
-  const activeDatabase = requireDatabase(database)
+  const activeUserId = requireAuthenticatedUserId(
+    userId,
+    () => new AuthenticationRequiredError(),
+  )
+  const activeDatabase = requireRealtimeDatabase(
+    database,
+    () => new FavouritesConfigurationError(),
+  )
 
   await remove(ref(activeDatabase, favouritePath(activeUserId, imdbID)))
 }

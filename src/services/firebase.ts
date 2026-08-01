@@ -57,6 +57,8 @@ if (!firebaseConfigurationError) {
 export { firebaseApp, firebaseAuth, firebaseDatabase }
 
 const authErrorMessages: Readonly<Record<string, string>> = {
+  'auth/account-exists-with-different-credential':
+    'An account already exists with this email using a different sign-in method.',
   'auth/email-already-in-use':
     'An account already exists for this email address. Try logging in instead.',
   'auth/invalid-credential':
@@ -68,15 +70,21 @@ const authErrorMessages: Readonly<Record<string, string>> = {
   'auth/network-request-failed':
     'The authentication service could not be reached. Check your connection and try again.',
   'auth/operation-not-allowed':
-    'Email and password sign-in is not enabled for this Firebase project.',
+    'This sign-in method is not enabled for this Firebase project.',
   'auth/password-does-not-meet-requirements':
     'Choose a stronger password that meets the account requirements.',
+  'auth/popup-blocked':
+    'Your browser blocked the Google sign-in window. Allow pop-ups and try again.',
+  'auth/popup-closed-by-user':
+    'Google sign-in was canceled before it finished.',
   'auth/too-many-requests':
     'Too many attempts were made. Wait a moment before trying again.',
   'auth/user-disabled':
     'This account has been disabled. Contact the project administrator for help.',
   'auth/user-not-found':
     'The email address or password is incorrect. Please try again.',
+  'auth/unauthorized-domain':
+    'Google sign-in is not enabled for this website domain.',
   'auth/weak-password': 'Choose a stronger password with at least eight characters.',
   'auth/wrong-password':
     'The email address or password is incorrect. Please try again.',

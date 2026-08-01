@@ -9,7 +9,7 @@ interface HeroBannerProps {
 }
 
 export function HeroBanner({ movie, details }: HeroBannerProps) {
-  const plot = details?.plot ?? 'Open the vault and explore the full cast, ratings, and story details.'
+  const plot = details?.plot ?? 'Explore the full cast, ratings, and story details.'
   const typeLabel = formatMovieType(movie.type)
 
   return (
@@ -23,8 +23,8 @@ export function HeroBanner({ movie, details }: HeroBannerProps) {
       )}
       <div className="hero__veil" aria-hidden="true" />
       <div className="hero__content page-width">
-        <p className="eyebrow"><span /> This week's vault feature</p>
-        <h1 id="hero-title">{movie.title}</h1>
+        <p className="eyebrow"><span /> This week’s feature</p>
+        <h2 id="hero-title">{movie.title}</h2>
         <div className="hero__meta" aria-label="Title information">
           {movie.year && <span>{movie.year}</span>}
           <span>{typeLabel}</span>

@@ -2,7 +2,7 @@ import type { MovieSummary } from '../../types/movie'
 import { MovieCard } from '../MovieCard/MovieCard'
 
 interface MovieGridProps {
-  movies: MovieSummary[]
+  movies: readonly MovieSummary[]
   label: string
 }
 

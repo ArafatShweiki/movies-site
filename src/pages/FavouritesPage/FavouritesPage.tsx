@@ -28,7 +28,7 @@ export default function FavouritesPage() {
         </section>
       ) : (
         <EmptyState
-          title="Your vault is ready"
+          title="Your favourites are ready"
           message="Save a title with the heart button and it will appear here."
           action={<Link className="button button--accent" to="/">Explore the catalogue</Link>}
         />

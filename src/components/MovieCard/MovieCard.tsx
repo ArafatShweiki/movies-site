@@ -3,6 +3,7 @@ import type { MovieSummary } from '../../types/movie'
 import { formatMovieType } from '../../utils/movieHelpers'
 import { FavouriteButton } from '../FavouriteButton/FavouriteButton'
 import { PosterArtwork } from '../PosterArtwork/PosterArtwork'
+import { WatchlistButton } from '../WatchlistButton/WatchlistButton'
 
 interface MovieCardProps {
   movie: MovieSummary
@@ -26,7 +27,10 @@ export function MovieCard({ movie, eager = false }: MovieCardProps) {
           />
           <span className="movie-card__details">View details</span>
         </Link>
-        <FavouriteButton movie={movie} />
+        <div className="movie-card__save-actions">
+          <FavouriteButton movie={movie} />
+          <WatchlistButton movie={movie} />
+        </div>
       </div>
       <div className="movie-card__body">
         <h3>

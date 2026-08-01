@@ -24,7 +24,7 @@ export function PosterArtwork({
         aria-label={`No poster available for ${title}`}
       >
         <span className="poster-fallback__mark" aria-hidden="true">
-          RV
+          SX
         </span>
         <span>Artwork unavailable</span>
       </div>
