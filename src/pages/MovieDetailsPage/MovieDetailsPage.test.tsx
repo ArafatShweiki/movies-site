@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FavouritesContextValue } from '../../context/favouritesContextValue'
 import { useAuth } from '../../hooks/useAuth'
 import { useFavourites } from '../../hooks/useFavourites'
+import { useWatchlist } from '../../hooks/useWatchlist'
+import type { WatchlistContextValue } from '../../context/watchlistContextValue'
 import { getMovieDetails, OmdbError } from '../../services/omdbService'
 import type { MovieDetails } from '../../types/movie'
 import MovieDetailsPage from './MovieDetailsPage'
@@ -18,6 +20,10 @@ vi.mock('../../hooks/useAuth', () => ({
 
 vi.mock('../../hooks/useFavourites', () => ({
   useFavourites: vi.fn(),
+}))
+
+vi.mock('../../hooks/useWatchlist', () => ({
+  useWatchlist: vi.fn(),
 }))
 
 vi.mock('../../services/omdbService', async (importOriginal) => {
@@ -58,8 +64,13 @@ function setHookDefaults() {
     user: null,
     loading: false,
     configurationError: null,
+    profile: null,
+    profileLoading: false,
+    profileError: null,
     login: vi.fn(),
     register: vi.fn(),
+    loginWithGoogle: vi.fn(),
+    saveProfile: vi.fn(),
     logout: vi.fn(),
   })
 
@@ -75,6 +86,19 @@ function setHookDefaults() {
     clearError: vi.fn(),
   }
   vi.mocked(useFavourites).mockReturnValue(favouritesValue)
+
+  const watchlistValue: WatchlistContextValue = {
+    watchlist: [],
+    loading: false,
+    isWatchlisted: () => false,
+    toggleWatchlist: vi.fn(() => Promise.resolve()),
+    addToWatchlist: vi.fn(() => Promise.resolve()),
+    removeFromWatchlist: vi.fn(() => Promise.resolve()),
+    pendingIds: new Set<string>(),
+    error: null,
+    clearError: vi.fn(),
+  }
+  vi.mocked(useWatchlist).mockReturnValue(watchlistValue)
 }
 
 function renderDetails(path: string) {

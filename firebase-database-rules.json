@@ -1,0 +1,151 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "catalog": {
+      ".read": true,
+      ".write": false,
+      "$imdbID": {
+        ".validate": "!newData.exists() || ($imdbID.matches(/^tt[0-9]{5,12}$/) && newData.hasChildren(['imdbID', 'title', 'type', 'fetchedAt']) && newData.child('imdbID').val() === $imdbID)",
+        "imdbID": {
+          ".validate": "newData.isString() && newData.val() === $imdbID"
+        },
+        "title": {
+          ".validate": "newData.isString()"
+        },
+        "year": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "type": {
+          ".validate": "newData.isString() && (newData.val() === 'movie' || newData.val() === 'series' || newData.val() === 'episode' || newData.val() === 'game' || newData.val() === 'unknown')"
+        },
+        "poster": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "plot": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "runtime": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "genres": {
+          "$index": {
+            ".validate": "$index.matches(/^(0|[1-9][0-9]*)$/) && newData.isString()"
+          }
+        },
+        "director": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "actors": {
+          "$index": {
+            ".validate": "$index.matches(/^(0|[1-9][0-9]*)$/) && newData.isString()"
+          }
+        },
+        "imdbRating": {
+          ".validate": "!newData.exists() || newData.isNumber()"
+        },
+        "contentRating": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "country": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "language": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "awards": {
+          ".validate": "!newData.exists() || newData.isString()"
+        },
+        "fetchedAt": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "profile": {
+          ".validate": "!newData.exists() || newData.hasChildren(['firstName', 'lastName', 'region', 'phoneNumber', 'updatedAt'])",
+          "firstName": {
+            ".validate": "newData.isString() && newData.val().length <= 50 && (newData.val().matches(/.*\\S.*/) || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && newData.val() === ''))"
+          },
+          "lastName": {
+            ".validate": "newData.isString() && newData.val().length <= 50 && (newData.val().matches(/.*\\S.*/) || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && newData.val() === ''))"
+          },
+          "region": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "phoneNumber": {
+            ".validate": "newData.isString() && newData.val().length <= 30 && (newData.val() === '' || (newData.val().matches(/^\\+?[-0-9() ]+$/) && newData.val().matches(/.*[0-9].*/)))"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "favourites": {
+          "$imdbID": {
+            ".validate": "!newData.exists() || ($imdbID.matches(/^tt[0-9]{5,12}$/) && newData.hasChildren(['imdbID', 'Title', 'Year', 'Type', 'Poster']) && newData.child('imdbID').val() === $imdbID)",
+            "imdbID": {
+              ".validate": "newData.isString() && newData.val() === $imdbID"
+            },
+            "Title": {
+              ".validate": "newData.isString()"
+            },
+            "Year": {
+              ".validate": "newData.isString()"
+            },
+            "Type": {
+              ".validate": "newData.isString() && (newData.val() === 'movie' || newData.val() === 'series' || newData.val() === 'episode' || newData.val() === 'game' || newData.val() === 'unknown')"
+            },
+            "Poster": {
+              ".validate": "newData.isString()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "watchlist": {
+          "$imdbID": {
+            ".validate": "!newData.exists() || ($imdbID.matches(/^tt[0-9]{5,12}$/) && newData.hasChildren(['imdbID', 'title', 'year', 'type', 'poster', 'addedAt']) && newData.child('imdbID').val() === $imdbID)",
+            "imdbID": {
+              ".validate": "newData.isString() && newData.val() === $imdbID"
+            },
+            "title": {
+              ".validate": "newData.isString()"
+            },
+            "year": {
+              ".validate": "newData.isString()"
+            },
+            "type": {
+              ".validate": "newData.isString() && (newData.val() === 'movie' || newData.val() === 'series' || newData.val() === 'episode' || newData.val() === 'game' || newData.val() === 'unknown')"
+            },
+            "poster": {
+              ".validate": "newData.isString()"
+            },
+            "addedAt": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

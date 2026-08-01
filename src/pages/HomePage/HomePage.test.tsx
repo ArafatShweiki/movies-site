@@ -3,14 +3,18 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FavouritesContextValue } from '../../context/favouritesContextValue'
+import type { WatchlistContextValue } from '../../context/watchlistContextValue'
 import { useAuth } from '../../hooks/useAuth'
 import { useFavourites } from '../../hooks/useFavourites'
+import { useWatchlist } from '../../hooks/useWatchlist'
+import { loadFeaturedSeries } from '../../services/catalogService'
 import {
   getMovieDetails,
   loadCuratedCollections,
 } from '../../services/omdbService'
 import type {
   CuratedMovieCollection,
+  FeaturedSeriesSlide,
   MovieDetails,
   MovieSummary,
 } from '../../types/movie'
@@ -22,6 +26,14 @@ vi.mock('../../hooks/useAuth', () => ({
 
 vi.mock('../../hooks/useFavourites', () => ({
   useFavourites: vi.fn(),
+}))
+
+vi.mock('../../hooks/useWatchlist', () => ({
+  useWatchlist: vi.fn(),
+}))
+
+vi.mock('../../services/catalogService', () => ({
+  loadFeaturedSeries: vi.fn(),
 }))
 
 vi.mock('../../services/omdbService', async (importOriginal) => {
@@ -47,6 +59,17 @@ const makeMovie = (
 
 const featuredMovie = makeMovie('tt0000001', 'Signal at Midnight')
 
+const featuredSeries: FeaturedSeriesSlide = {
+  imdbID: 'tt9000001',
+  title: 'Northstar',
+  year: '2023',
+  type: 'series',
+  poster: 'https://images.example/northstar.jpg',
+  plot: 'A remote observatory receives messages from an abandoned station.',
+  genres: ['Drama', 'Mystery'],
+  imdbRating: '8.3',
+}
+
 const heroDetails: MovieDetails = {
   ...featuredMovie,
   contentRating: 'PG-13',
@@ -68,7 +91,7 @@ const heroDetails: MovieDetails = {
 const topTenMovies = Array.from({ length: 10 }, (_, index) =>
   makeMovie(
     `tt${String(index + 100).padStart(7, '0')}`,
-    `Vault Pick ${index + 1}`,
+    `Strex Pick ${index + 1}`,
   ),
 )
 
@@ -101,7 +124,7 @@ const collections: readonly CuratedMovieCollection[] = [
   {
     id: 'top-ten',
     title: 'Top 10 Picks',
-    query: 'vault',
+    query: 'curated',
     movies: topTenMovies,
   },
 ]
@@ -111,8 +134,13 @@ function setHookDefaults() {
     user: null,
     loading: false,
     configurationError: null,
+    profile: null,
+    profileLoading: false,
+    profileError: null,
     login: vi.fn(),
     register: vi.fn(),
+    loginWithGoogle: vi.fn(),
+    saveProfile: vi.fn(),
     logout: vi.fn(),
   })
 
@@ -128,6 +156,19 @@ function setHookDefaults() {
     clearError: vi.fn(),
   }
   vi.mocked(useFavourites).mockReturnValue(favouritesValue)
+
+  const watchlistValue: WatchlistContextValue = {
+    watchlist: [],
+    loading: false,
+    isWatchlisted: () => false,
+    toggleWatchlist: vi.fn(() => Promise.resolve()),
+    addToWatchlist: vi.fn(() => Promise.resolve()),
+    removeFromWatchlist: vi.fn(() => Promise.resolve()),
+    pendingIds: new Set<string>(),
+    error: null,
+    clearError: vi.fn(),
+  }
+  vi.mocked(useWatchlist).mockReturnValue(watchlistValue)
 }
 
 function renderHome() {
@@ -144,6 +185,7 @@ describe('HomePage', () => {
     setHookDefaults()
     vi.mocked(loadCuratedCollections).mockResolvedValue(collections)
     vi.mocked(getMovieDetails).mockResolvedValue(heroDetails)
+    vi.mocked(loadFeaturedSeries).mockResolvedValue([featuredSeries])
   })
 
   it('renders a detailed hero, curated disclosure, themed rows, and ten ranked picks', async () => {
@@ -154,13 +196,23 @@ describe('HomePage', () => {
     ).toBeInTheDocument()
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: featuredMovie.title }),
+      await screen.findByRole('heading', { level: 2, name: featuredMovie.title }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: /strex movie and television discovery/i,
+      }),
     ).toBeInTheDocument()
     expect(
       await screen.findByText(heroDetails.plot ?? ''),
     ).toBeInTheDocument()
     expect(screen.getByText(/chosen, not charted/i)).toBeInTheDocument()
     expect(screen.getByText(/do not represent live trends/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Featured series' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: featuredSeries.title })).toBeInTheDocument()
 
     for (const heading of [
       'Featured This Week',
@@ -174,7 +226,9 @@ describe('HomePage', () => {
       ).toBeInTheDocument()
     }
 
-    const detailsLink = screen.getByRole('link', { name: /^view details$/i })
+    const detailsLink = screen
+      .getAllByRole('link', { name: /^view details$/i })
+      .find((link) => link.getAttribute('href') === `/movie/${featuredMovie.imdbID}`)
     expect(detailsLink).toHaveAttribute('href', `/movie/${featuredMovie.imdbID}`)
     expect(screen.getByText('8.1 IMDb')).toBeInTheDocument()
 
@@ -206,7 +260,7 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: /try again/i }))
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: featuredMovie.title }),
+      await screen.findByRole('heading', { level: 2, name: featuredMovie.title }),
     ).toBeInTheDocument()
     expect(loadCuratedCollections).toHaveBeenCalledTimes(2)
   })

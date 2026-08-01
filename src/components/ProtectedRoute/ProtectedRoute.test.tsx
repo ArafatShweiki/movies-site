@@ -22,8 +22,13 @@ function setAuthState(overrides: Partial<AuthContextValue> = {}) {
     user: null,
     loading: false,
     configurationError: null,
+    profile: null,
+    profileLoading: false,
+    profileError: null,
     login: vi.fn(),
     register: vi.fn(),
+    loginWithGoogle: vi.fn(),
+    saveProfile: vi.fn(),
     logout: vi.fn(),
     ...overrides,
   })
@@ -51,8 +56,26 @@ function renderProtectedRoute(initialEntry = '/favourites') {
         <Route
           path="/favourites"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute message="Sign in to open your favourites.">
               <h1>Your favourites</h1>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/auth" element={<AuthenticationDestination />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+function renderWatchlistRoute(initialEntry = '/watchlist') {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route
+          path="/watchlist"
+          element={
+            <ProtectedRoute message="Sign in to open your watchlist.">
+              <h1>Your watchlist</h1>
             </ProtectedRoute>
           }
         />
@@ -91,13 +114,23 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Authentication')).not.toBeInTheDocument()
   })
 
+  it('protects the watchlist route and preserves its intended destination', () => {
+    renderWatchlistRoute('/watchlist?order=recent')
+
+    expect(screen.getByTestId('return-destination')).toHaveTextContent(
+      '/watchlist?order=recent',
+    )
+    expect(screen.getByText('Sign in to open your watchlist.')).toBeInTheDocument()
+    expect(screen.queryByText('Your watchlist')).not.toBeInTheDocument()
+  })
+
   it('shows a status message while authentication is loading', () => {
     setAuthState({ loading: true })
 
     renderProtectedRoute()
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      /checking your vault/i,
+      /checking your account/i,
     )
     expect(screen.queryByText('Your favourites')).not.toBeInTheDocument()
   })

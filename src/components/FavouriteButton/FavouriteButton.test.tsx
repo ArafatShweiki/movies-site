@@ -35,8 +35,13 @@ function authValue(user: User | null) {
     user,
     loading: false,
     configurationError: null,
+    profile: null,
+    profileLoading: false,
+    profileError: null,
     login: vi.fn(),
     register: vi.fn(),
+    loginWithGoogle: vi.fn(),
+    saveProfile: vi.fn(),
     logout: vi.fn(),
   }
 }
@@ -111,7 +116,7 @@ describe('FavouriteButton', () => {
       `/movie/${movie.imdbID}?from=featured`,
     )
     expect(
-      screen.getByText(/sign in to save titles to your personal vault/i),
+      screen.getByText(/sign in to save titles to your favourites/i),
     ).toBeInTheDocument()
     expect(toggleFavourite).not.toHaveBeenCalled()
   })

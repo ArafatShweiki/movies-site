@@ -13,6 +13,8 @@ function deferredPromise() {
 }
 
 async function fillValidRegistration(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/first name/i), 'Amina')
+  await user.type(screen.getByLabelText(/last name/i), 'Saleh')
   await user.type(screen.getByLabelText(/email address/i), 'viewer@example.com')
   await user.type(screen.getByLabelText(/^password$/i), 'password1')
   await user.type(screen.getByLabelText(/confirm password/i), 'password1')
@@ -26,13 +28,21 @@ describe('RegistrationForm', () => {
     render(<RegistrationForm onSubmit={onSubmit} />)
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
+    const firstName = screen.getByLabelText(/first name/i)
+    const lastName = screen.getByLabelText(/last name/i)
     const email = screen.getByLabelText(/email address/i)
     const password = screen.getByLabelText(/^password$/i)
     const confirmation = screen.getByLabelText(/confirm password/i)
+    const firstNameError = screen.getByText('First name is required.')
+    const lastNameError = screen.getByText('Last name is required.')
     const emailError = screen.getByText('Email is required.')
     const passwordError = screen.getByText('Password is required.')
     const confirmationError = screen.getByText('Confirm your password.')
 
+    expect(firstName).toHaveAttribute('aria-invalid', 'true')
+    expect(firstName).toHaveAttribute('aria-describedby', firstNameError.id)
+    expect(lastName).toHaveAttribute('aria-invalid', 'true')
+    expect(lastName).toHaveAttribute('aria-describedby', lastNameError.id)
     expect(email).toHaveAttribute('aria-invalid', 'true')
     expect(email).toHaveAttribute('aria-describedby', emailError.id)
     expect(password).toHaveAttribute('aria-invalid', 'true')
@@ -45,11 +55,30 @@ describe('RegistrationForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('rejects whitespace-only first and last names', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<RegistrationForm onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText(/first name/i), '   ')
+    await user.type(screen.getByLabelText(/last name/i), '   ')
+    await user.type(screen.getByLabelText(/email address/i), 'viewer@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password1')
+    await user.type(screen.getByLabelText(/confirm password/i), 'password1')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(screen.getByText('First name is required.')).toBeInTheDocument()
+    expect(screen.getByText('Last name is required.')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('rejects an invalid email address', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
 
     render(<RegistrationForm onSubmit={onSubmit} />)
+    await user.type(screen.getByLabelText(/first name/i), 'Amina')
+    await user.type(screen.getByLabelText(/last name/i), 'Saleh')
     await user.type(screen.getByLabelText(/email address/i), 'viewer.example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password1')
     await user.type(screen.getByLabelText(/confirm password/i), 'password1')
@@ -64,6 +93,8 @@ describe('RegistrationForm', () => {
     const onSubmit = vi.fn()
 
     render(<RegistrationForm onSubmit={onSubmit} />)
+    await user.type(screen.getByLabelText(/first name/i), 'Amina')
+    await user.type(screen.getByLabelText(/last name/i), 'Saleh')
     await user.type(screen.getByLabelText(/email address/i), 'viewer@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'short')
     await user.type(screen.getByLabelText(/confirm password/i), 'short')
@@ -85,6 +116,8 @@ describe('RegistrationForm', () => {
     const onSubmit = vi.fn()
 
     render(<RegistrationForm onSubmit={onSubmit} />)
+    await user.type(screen.getByLabelText(/first name/i), 'Amina')
+    await user.type(screen.getByLabelText(/last name/i), 'Saleh')
     await user.type(screen.getByLabelText(/email address/i), 'viewer@example.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password1')
     await user.type(screen.getByLabelText(/confirm password/i), 'password2')
@@ -102,13 +135,20 @@ describe('RegistrationForm', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 
     render(<RegistrationForm onSubmit={onSubmit} />)
+    await user.type(screen.getByLabelText(/first name/i), '  Amina  ')
+    await user.type(screen.getByLabelText(/last name/i), '  Saleh  ')
     await user.type(screen.getByLabelText(/email address/i), '  viewer@example.com  ')
     await user.type(screen.getByLabelText(/^password$/i), 'password1')
     await user.type(screen.getByLabelText(/confirm password/i), 'password1')
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith('viewer@example.com', 'password1')
+      expect(onSubmit).toHaveBeenCalledWith({
+        firstName: 'Amina',
+        lastName: 'Saleh',
+        email: 'viewer@example.com',
+        password: 'password1',
+      })
     })
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
@@ -139,6 +179,8 @@ describe('RegistrationForm', () => {
 
     const loadingButton = screen.getByRole('button', { name: /creating account/i })
     expect(loadingButton).toBeDisabled()
+    expect(screen.getByLabelText(/first name/i)).toBeDisabled()
+    expect(screen.getByLabelText(/last name/i)).toBeDisabled()
     expect(screen.getByLabelText(/email address/i)).toBeDisabled()
     expect(screen.getByLabelText(/^password$/i)).toBeDisabled()
     expect(screen.getByLabelText(/confirm password/i)).toBeDisabled()
@@ -157,10 +199,14 @@ describe('RegistrationForm', () => {
     const user = userEvent.setup()
 
     render(<RegistrationForm onSubmit={vi.fn()} />)
+    const firstName = screen.getByLabelText(/first name/i)
+    const lastName = screen.getByLabelText(/last name/i)
     const email = screen.getByLabelText(/email address/i)
     const password = screen.getByLabelText(/^password$/i)
     const confirmation = screen.getByLabelText(/confirm password/i)
 
+    await user.type(firstName, 'Amina')
+    await user.type(lastName, 'Saleh')
     await user.type(email, 'invalid')
     await user.type(password, 'short')
     await user.type(confirmation, 'different')
@@ -169,6 +215,8 @@ describe('RegistrationForm', () => {
 
     await user.click(screen.getByRole('button', { name: /clear form/i }))
 
+    expect(firstName).toHaveValue('')
+    expect(lastName).toHaveValue('')
     expect(email).toHaveValue('')
     expect(password).toHaveValue('')
     expect(confirmation).toHaveValue('')
