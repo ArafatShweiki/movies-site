@@ -4,7 +4,7 @@ This file is a reflection template. Complete it after reviewing the generated wo
 
 ## How AI assisted
 
-TODO: Summarize the parts of the ReelVault assignment for which AI assistance was actually used.
+TODO: Summarize the parts of the Strex assignment for which AI assistance was actually used.
 
 ## Planning assistance
 
@@ -33,4 +33,3 @@ TODO: Reflect on specific technical or design concepts you learned while reading
 ## Limitations of AI-generated output
 
 TODO: Document limitations you observed, such as assumptions that required checking, missing product context, visual details that needed human judgment, or behaviours that could only be verified with configured external services.
-

@@ -1,20 +1,22 @@
-# ReelVault
+# Strex
 
-ReelVault is a responsive movie and television discovery application built around the OMDb catalogue. It helps people browse original curated collections, search by title, inspect detailed metadata, sign in with email and password, and keep a private favourites library.
+Strex is a responsive movie and television discovery application built around the OMDb catalogue. It helps people browse original curated collections, search by title, inspect detailed metadata, sign in, and keep private favourites and watchlists.
 
-ReelVault is a catalogue and discovery experience only. It does not play, stream, scrape, download, or link to third-party viewing sources.
+Strex is a catalogue and discovery experience only. It does not play, stream, scrape, download, or link to third-party viewing sources.
 
 ## Main features
 
 - Cinema-inspired, responsive interface for desktop, tablet, and mobile screens
 - Curated movie and series collections with a featured cinematic hero
+- An accessible featured-series carousel with previous/next controls, slide indicators, and restrained automatic rotation
 - Dedicated Top 10 presentation whose ordering is curated, not a live popularity chart
 - URL-synchronized title search at `/search?q=` with clear loading, empty, and error states
 - Detailed title pages powered by OMDb's IMDb-ID endpoint
 - Missing-poster fallback artwork and graceful handling of unavailable metadata
-- Firebase email/password registration and login with persistent sessions
-- Protected favourites page with per-user data in Firebase Realtime Database
-- Favourite controls shared across discovery, search, details, and favourites views
+- Firebase email/password and Google authentication with persistent sessions
+- Protected favourites and watchlist collections scoped to the active user
+- A private account profile stored under the authenticated user's UID
+- Favourite and watchlist controls shared across discovery and detail views
 - Keyboard-friendly controls, visible focus states, accessible form errors, and reduced-motion support
 - Unit and component tests with external services mocked
 
@@ -38,7 +40,7 @@ The feature list describes the application's intended behaviour. Credential-back
 - A Node.js release supported by Vite 8 (Node.js 20.19+ or 22.12+ is recommended)
 - npm
 - An [OMDb API key](https://www.omdbapi.com/apikey.aspx)
-- A Firebase project with Email/Password Authentication and Realtime Database enabled
+- A Firebase project with Email/Password and Google Authentication plus Realtime Database enabled
 
 ## Installation
 
@@ -101,7 +103,9 @@ The application presents configuration guidance when required variables are unav
 4. Restart `npm run dev`.
 5. Confirm that the home collections, a title search, and a detail page load successfully.
 
-OMDb supplies search and title metadata; it does not provide a live trending feed. ReelVault therefore labels its rails and ranking as curated collections. API availability, request limits, and catalogue coverage depend on the OMDb plan.
+OMDb supplies search and title metadata; it does not provide a live trending feed. Strex therefore labels its rails and ranking as curated collections. API availability, request limits, and catalogue coverage depend on the OMDb plan.
+
+The featured-series carousel prefers normalized series records from the public read-only Firebase `/catalog` node. If that catalogue is unavailable or contains too few suitable records, Strex falls back to documented OMDb searches. Automatic rotation pauses during pointer or keyboard interaction and is disabled when reduced motion is requested; every slide remains available through explicit controls.
 
 ## Firebase setup
 
@@ -117,75 +121,76 @@ OMDb supplies search and title metadata; it does not provide a live trending fee
 1. Open **Build > Authentication** in the Firebase console.
 2. Select **Get started**, then open **Sign-in method**.
 3. Enable the **Email/Password** provider.
-4. Add each deployed domain under **Authentication > Settings > Authorized domains**. Localhost is normally available for development.
+4. Enable the **Google** provider, select a project support email, and save the provider configuration.
+5. Add each deployed domain under **Authentication > Settings > Authorized domains**. Localhost is normally available for development.
+6. If the Google OAuth consent screen is in testing mode, add the accounts that will perform manual verification as test users in Google Cloud Console.
 
-Passwords are sent directly to Firebase Authentication and are never stored in ReelVault's database.
+Passwords are sent directly to Firebase Authentication and are never stored in Strex's database.
 
 ### Create the Realtime Database
 
 1. Open **Build > Realtime Database**.
 2. Create a database and choose the region closest to the expected users.
-3. Start with locked mode, then publish the rules below.
+3. Start with locked mode.
 4. Verify that `VITE_FIREBASE_DATABASE_URL` points to this database.
+5. Publish the checked-in [`firebase-database-rules.json`](firebase-database-rules.json) file by copying its complete contents into **Realtime Database > Rules**, then selecting **Publish**.
 
-Favourites use this shape:
+Strex uses these user-owned records in addition to the imported `catalog/{imdbID}` records:
 
 ```text
 users/
   {uid}/
+    profile/
+      firstName: string
+      lastName: string
+      region: string
+      phoneNumber: string
+      updatedAt: number
     favourites/
       {imdbID}/
-        imdbID
-        Title
-        Year
-        Type
-        Poster
+        imdbID: string
+        Title: string
+        Year: string
+        Type: string
+        Poster: string
+    watchlist/
+      {imdbID}/
+        imdbID: string
+        title: string
+        year: string
+        type: string
+        poster: string
+        addedAt: number
 ```
 
-### Suggested Realtime Database security rules
+### Realtime Database security rules
 
-These rules deny access by default and allow an authenticated user to read and write only the node matching their own Firebase UID. The validation also keeps favourite records structurally consistent.
+[`firebase-database-rules.json`](firebase-database-rules.json) is the canonical deployable rules file. It denies reads and writes by default, permits public read-only access to `/catalog`, and denies all client catalogue writes. An authenticated user can read and write only `/users/<their-own-uid>`. Profile, favourite, and watchlist records are type-checked, IMDb values must match their record keys, unexpected profile and item fields are rejected, and favourite or watchlist items can be deleted normally.
 
-```json
-{
-  "rules": {
-    "users": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
-        "favourites": {
-          "$imdbID": {
-            ".validate": "newData.hasChildren(['imdbID', 'Title', 'Year', 'Type', 'Poster']) && newData.child('imdbID').isString() && newData.child('imdbID').val() === $imdbID && newData.child('Title').isString() && newData.child('Year').isString() && newData.child('Type').isString() && newData.child('Poster').isString()",
-            "imdbID": {
-              ".validate": "newData.isString() && newData.val() === $imdbID"
-            },
-            "Title": {
-              ".validate": "newData.isString()"
-            },
-            "Year": {
-              ".validate": "newData.isString()"
-            },
-            "Type": {
-              ".validate": "newData.isString()"
-            },
-            "Poster": {
-              ".validate": "newData.isString()"
-            },
-            "$other": {
-              ".validate": false
-            }
-          }
-        },
-        "$other": {
-          ".validate": false
-        }
-      }
-    }
-  }
-}
-```
+The checked-in file is documentation and deployment input; creating it does not publish it. No Firebase project or live ruleset was changed during this implementation.
 
-Publish the rules in **Realtime Database > Rules**. Test them with two separate accounts or the Firebase Rules Playground: each account should be able to access only `/users/<its-own-uid>` and should be denied access to the other UID.
+Firebase Admin credentials bypass client rules, which is why the trusted catalogue importer can write `/catalog` while browser clients cannot. Keep Admin credentials out of the frontend.
+
+After publishing, use the Firebase Rules Playground or two separate test accounts to verify all of the following:
+
+- A signed-out client can read `/catalog` but cannot write it.
+- A signed-in user can read and update only their own profile, favourites, and watchlist.
+- The same user is denied access to another UID.
+- A favourite or watchlist item whose `imdbID` differs from its key is rejected.
+- Unexpected profile fields and malformed record types are rejected.
+- Blank or overlong profile names and malformed phone values are rejected (an empty Google-sourced name is allowed only during initial profile creation when Google supplies no corresponding name part).
+- Deleting an item from the active user's favourites or watchlist succeeds.
+
+### Manual Firebase verification
+
+These credential-backed checks were not performed during automated verification and must be completed against your Firebase project:
+
+1. Restart the development server after configuring `.env`, then create an account with email and password and confirm the session survives a page refresh.
+2. Log out, choose Google sign-in, complete the provider flow, and confirm Strex returns to the intended protected destination.
+3. Inspect `/users/<uid>/profile` in Realtime Database and confirm only `firstName`, `lastName`, `region`, `phoneNumber`, and numeric `updatedAt` fields are present.
+4. Update the active user's profile, add and remove one favourite, and add and remove one watchlist title; refresh between actions to confirm subscriptions restore current data.
+5. Repeat with a second account and use the Rules Playground to confirm neither account can read or write the other UID.
+6. While signed out, confirm `/catalog` can be read but a browser-client catalogue write is rejected.
 
 ## Trusted catalogue import
 
@@ -194,7 +199,7 @@ The server-side importer at `scripts/import-omdb.mjs` uses only the documented O
 ```dotenv
 OMDB_API_KEY=your_omdb_api_key
 FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
-GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\service-account-reelvault.json
+GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\service-account-strex.json
 ```
 
 - `OMDB_API_KEY` is the activated OMDb key used for catalogue searches and full-detail requests.
@@ -236,23 +241,25 @@ The importer was **not run** as part of the project setup or automated verificat
 | `/search?q=title` | Search results synchronized with the URL |
 | `/movie/:imdbID` | Complete movie or series details |
 | `/favourites` | Authenticated user's protected favourites |
-| `/auth` | Login and account creation |
+| `/watchlist` | Authenticated user's protected watchlist |
+| `/profile` | Authenticated user's protected profile editor |
+| `/auth` | Email/password and Google account access |
 | `*` | Not-found page |
 
-When a signed-out visitor requests `/favourites` or starts a favourite action, the app sends them to `/auth` while preserving the intended destination when possible.
+When a signed-out visitor requests a protected collection or starts a favourite/watchlist action, the app sends them to `/auth` while preserving the intended destination when possible.
 
 ## Project structure
 
 ```text
 .
 ├── public/
-│   └── og.png                  # Original ReelVault social-preview artwork
+│   └── og.png                  # Original Strex social-preview artwork
 ├── scripts/
 │   ├── import-omdb.mjs         # Trusted server-side catalogue importer
 │   └── import-omdb.test.mjs    # Offline importer tests
 ├── src/
 │   ├── components/             # Reusable navigation, cards, rows, forms, and states
-│   ├── context/                # Authentication and favourites providers
+│   ├── context/                # Authentication, favourites, and watchlist providers
 │   ├── hooks/                  # Reusable stateful application logic
 │   ├── pages/                  # Route-level page components
 │   ├── services/               # OMDb and Firebase integrations
@@ -267,6 +274,7 @@ When a signed-out visitor requests `/favourites` or starts a favourite action, t
 ├── .env.example                # Safe environment template
 ├── AI_PROMPTS.md               # Recorded AI prompts
 ├── AI_USAGE_REPORT.md          # AI-assistance reflection template
+├── firebase-database-rules.json # Deployable Realtime Database rules
 ├── MANUAL_IMPROVEMENTS.md      # Manual-review log template
 ├── eslint.config.js
 ├── package.json
@@ -284,7 +292,7 @@ Run the complete automated suite once:
 npm run test -- --run
 ```
 
-The tests use Vitest and React Testing Library. Network-facing OMDb and Firebase operations are mocked; the suite must not contact real services or require credentials. The requested coverage includes form validation and error association, authentication form behaviour, protected routing, movie normalization and deduplication, and favourite add/remove safeguards. Consult the latest test-run output rather than treating this documentation as proof that every test passed.
+The tests use Vitest and React Testing Library. Network-facing OMDb and Firebase operations are mocked; the suite must not contact real services or require credentials. Coverage includes form validation and error association, email and Google authentication behaviour, profile state, protected routing, movie normalization and deduplication, carousel controls, and favourite/watchlist safeguards. Consult the latest test-run output rather than treating this documentation as proof that every test passed.
 
 For an additional manual pass, verify the interface at approximately 360 px, 768 px, 1024 px, and 1440 px; navigate every interactive control by keyboard; test with reduced motion enabled; and use separate Firebase accounts to confirm data isolation.
 
@@ -310,11 +318,13 @@ Replace these placeholders after configuring the APIs and completing a visual QA
 
 | View | Suggested viewport | Screenshot to add |
 | --- | --- | --- |
-| Discovery home | 1440 px desktop | `docs/screenshots/home-desktop.png` |
+| Discovery home and featured carousel | 1440 px desktop | `docs/screenshots/home-desktop.png` |
 | Search results | 1024 px laptop | `docs/screenshots/search-results.png` |
 | Movie details | 768 px tablet | `docs/screenshots/movie-details-tablet.png` |
 | Favourites | 390 px mobile | `docs/screenshots/favourites-mobile.png` |
+| Watchlist | 390 px mobile | `docs/screenshots/watchlist-mobile.png` |
 | Authentication | 390 px mobile | `docs/screenshots/auth-mobile.png` |
+| Profile editor | 768 px tablet | `docs/screenshots/profile-tablet.png` |
 
 ## Accessibility notes
 
@@ -336,14 +346,14 @@ Automated checks cannot replace manual testing. Before release, test representat
 - Collections and the Top 10 rail are editorial search groupings, not real-time trend or popularity data.
 - OMDb can return incomplete fields or `N/A`; the interface omits unavailable detail labels.
 - Poster URLs and metadata quality are controlled by OMDb and its upstream catalogue.
-- ReelVault does not provide playback, streaming availability, downloads, or watch-provider links.
-- Authentication is limited to email and password; account verification, password reset, and social providers are potential future additions.
+- Strex does not provide playback, streaming availability, downloads, or watch-provider links.
+- Authentication supports email/password and Google; account verification, password reset, and additional identity providers are not included.
 
 ## Future improvements
 
 - Add paginated search and optional filters for year and content type.
 - Add password-reset and email-verification account flows.
-- Add user-created lists and private notes while retaining per-user security rules.
+- Add user-created lists and private notes beyond favourites and the watchlist while retaining per-user security rules.
 - Add end-to-end browser tests against dedicated test projects.
 - Add offline-aware caching and richer resilience for rate limits.
 - Add localized interface copy and locale-aware metadata presentation.
