@@ -7,10 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "vitest"
+    "test": "vitest",
+    "seed:movies": "node scripts/import-omdb.mjs"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "firebase": "^12.17.0",
+    "firebase-admin": "^13.10.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "7.18.2"

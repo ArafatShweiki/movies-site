@@ -72,6 +72,7 @@ Vite prints the local URL in the terminal. Real `.env` files are ignored by Git 
 | `npm run test` | Run Vitest in watch mode |
 | `npm run lint` | Check the project with ESLint |
 | `npm run build` | Type-check and create a production build |
+| `npm run seed:movies` | Intentionally import the curated OMDb catalogue into Firebase |
 
 ## Environment configuration
 
@@ -186,6 +187,32 @@ These rules deny access by default and allow an authenticated user to read and w
 
 Publish the rules in **Realtime Database > Rules**. Test them with two separate accounts or the Firebase Rules Playground: each account should be able to access only `/users/<its-own-uid>` and should be denied access to the other UID.
 
+## Trusted catalogue import
+
+The server-side importer at `scripts/import-omdb.mjs` uses only the documented OMDb API and Firebase Admin SDK. It reads `.env.seed` when present, while existing shell environment variables take precedence. Configure these three non-`VITE_` variables:
+
+```dotenv
+OMDB_API_KEY=your_omdb_api_key
+FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
+GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\service-account-reelvault.json
+```
+
+- `OMDB_API_KEY` is the activated OMDb key used for catalogue searches and full-detail requests.
+- `FIREBASE_DATABASE_URL` must be the exact Realtime Database URL for the intended Firebase project, including its regional hostname when applicable.
+- `GOOGLE_APPLICATION_CREDENTIALS` must be an absolute path to a Firebase Admin service-account JSON file. Generate it from **Firebase console > Project settings > Service accounts > Generate new private key**.
+
+Prefer storing the service-account file outside the repository. If it must be kept locally inside the workspace, use a filename matched by `service-account*.json` or `firebase-admin*.json`; those patterns and `.env.seed` are ignored by Git. Never commit, share, or expose the private key, and never copy Firebase Admin credentials into frontend code or a `VITE_` variable.
+
+After confirming the target database URL, service-account project, credentials, and database rules, run the importer intentionally:
+
+```bash
+npm run seed:movies
+```
+
+The first import is limited to approximately 50 unique movies selected from the configured search terms. Each record is written at `catalog/{imdbID}`, so rerunning the command updates that IMDb ID rather than creating a duplicate. The script continues past individual title failures and prints imported, skipped, and failed counts when it finishes. Firebase Admin writes bypass client security rules, so verify the target project before running it.
+
+The importer was **not run** as part of the project setup or automated verification; running it requires your real OMDb key and Firebase Admin credentials and changes the configured database.
+
 ## Application routes
 
 | Route | Purpose |
@@ -205,6 +232,9 @@ When a signed-out visitor requests `/favourites` or starts a favourite action, t
 .
 ├── public/
 │   └── og.png                  # Original ReelVault social-preview artwork
+├── scripts/
+│   ├── import-omdb.mjs         # Trusted server-side catalogue importer
+│   └── import-omdb.test.mjs    # Offline importer tests
 ├── src/
 │   ├── components/             # Reusable navigation, cards, rows, forms, and states
 │   ├── context/                # Authentication and favourites providers

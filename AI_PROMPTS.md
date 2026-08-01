@@ -743,6 +743,85 @@ When finished, provide:
 Begin by reading CLAUDE.md, inspecting the folder, and presenting the implementation plan.
 ````
 
+## Prompt 2
+
+- **Date:** 2026-08-01
+- **Purpose:** Add and verify a trusted server-side OMDb catalogue importer for Firebase Realtime Database.
+- **AI tool:** OpenAI Codex
+- **Outcome:** Added the importer, offline tests, dependency and lint integration, secret-ignore rules, and setup documentation. The full suite passed with 13 test files and 72 tests; ESLint and the production build passed. The importer was intentionally not executed because real credentials were not provided.
+
+### Complete prompt
+
+```text
+Continue working on the existing ReelVault project.
+
+Create a trusted Node.js script at scripts/import-omdb.mjs that imports a small curated movie catalogue from OMDb into Firebase Realtime Database.
+
+Requirements:
+
+- Read movie data only through the documented OMDb API.
+- Never scrape IMDb pages.
+- Read OMDB_API_KEY from an environment variable.
+- Read FIREBASE_DATABASE_URL from an environment variable.
+- Initialize Firebase Admin using GOOGLE_APPLICATION_CREDENTIALS.
+- Never place Firebase Admin credentials in frontend code.
+- Search these terms:
+  Batman
+  Star Wars
+  Harry Potter
+  Spider-Man
+  Mission Impossible
+  animation
+  science fiction
+  comedy
+
+- Limit the first import to approximately 50 movies.
+- Deduplicate results using imdbID.
+- Retrieve full details for every selected IMDb ID.
+- Normalize N/A and missing fields.
+- Store each movie at catalog/{imdbID}.
+- Rerunning the script must update the same movie rather than create duplicates.
+- Limit concurrent OMDb requests.
+- Continue when one title fails.
+- Print imported, skipped, and failed counts at the end.
+
+Use this database shape:
+
+catalog/{imdbID}:
+{
+  imdbID,
+  title,
+  year,
+  type,
+  poster,
+  plot,
+  runtime,
+  genres,
+  director,
+  actors,
+  imdbRating,
+  contentRating,
+  country,
+  language,
+  awards,
+  fetchedAt
+}
+
+Install firebase-admin and dotenv only if they are not already installed.
+
+Add this package.json script:
+
+"seed:movies": "node scripts/import-omdb.mjs"
+
+Ensure these remain ignored by Git:
+
+.env.seed
+service-account*.json
+firebase-admin*.json
+
+Do not execute the importer yet. First run its automated tests, lint, and production build. Explain exactly which environment variables I must configure.
+```
+
 ## Future prompts
 
 Copy the template below for each future prompt. Leave it blank until another prompt is actually used.
