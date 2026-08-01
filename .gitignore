@@ -25,3 +25,4 @@ Thumbs.db
 service-account*.json
 .env.seed
 firebase-admin*.json
+node_modules
