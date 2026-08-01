@@ -45,8 +45,8 @@ The feature list describes the application's intended behaviour. Credential-back
 ## Installation
 
 ```bash
-git clone <your-repository-url>
-cd "movies site"
+git clone https://github.com/ArafatShweiki/movies-site.git
+cd movies-site
 npm install
 cp .env.example .env
 ```
@@ -275,7 +275,7 @@ When a signed-out visitor requests a protected collection or starts a favourite/
 ├── AI_PROMPTS.md               # Recorded AI prompts
 ├── AI_USAGE_REPORT.md          # AI-assistance reflection template
 ├── firebase-database-rules.json # Deployable Realtime Database rules
-├── MANUAL_IMPROVEMENTS.md      # Manual-review log template
+├── STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md      # Manual-review log template
 ├── eslint.config.js
 ├── package.json
 ├── tsconfig.app.json
@@ -363,4 +363,4 @@ Automated checks cannot replace manual testing. Before release, test representat
 
 - [AI_PROMPTS.md](AI_PROMPTS.md) records the AI prompt used for this implementation.
 - [AI_USAGE_REPORT.md](AI_USAGE_REPORT.md) provides an honest template for documenting how AI contributed.
-- [MANUAL_IMPROVEMENTS.md](MANUAL_IMPROVEMENTS.md) is reserved for manual review and improvement evidence.
+- [STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md](STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md) is reserved for manual review and improvement evidence.
