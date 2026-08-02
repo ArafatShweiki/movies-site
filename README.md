@@ -285,7 +285,7 @@ When a signed-out visitor requests a protected collection or starts a favourite/
 ├── .env.example                # Safe environment template
 ├── AI_PROMPTS.md               # Recorded AI prompts
 ├── AI_USAGE_REPORT.md          # Reflection on how AI assisted development
-├── STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md
+├── STUDENT_DIRECTED_IMPROVEMENTS.md
 │                                # Student requests and AI-assisted refinements
 ├── firebase-database-rules.json # Deployable Realtime Database rules
 ├── eslint.config.js
@@ -402,4 +402,4 @@ These contributions are documented as student-directed, AI-assisted development 
 
 - [AI_PROMPTS.md](AI_PROMPTS.md) records the detailed prompts sent to Codex during development.
 - [AI_USAGE_REPORT.md](AI_USAGE_REPORT.md) explains how AI assisted with planning, implementation, debugging, and review.
-- [STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md](STREX_AI_PROMPTS_AND_MANUAL_IMPROVEMENTS.md) records the student's requests, product decisions, and AI-assisted refinements. It also states that no direct source-code edits were made by the student.
+- [STUDENT_DIRECTED_IMPROVEMENTS.md](STUDENT_DIRECTED_IMPROVEMENTS.md) records the student's requests, product decisions, and AI-assisted refinements. It also states that no direct source-code edits were made by the student.
