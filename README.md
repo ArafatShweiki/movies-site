@@ -346,23 +346,6 @@ Automated checks cannot replace manual testing. Before release, test representat
 
 ## Development and review disclosure
 
-The project requirements, branding, feature choices, and visual changes were directed by the student, while Codex was used to generate and revise the application source code. The student did **not** directly edit the source code.
-
-The student's hands-on work included:
-
-- Choosing the **Strex** name and requesting the carousel, watchlist, profile, softer palette, first-name account display, and Google sign-in
-- Configuring and activating OMDb
-- Creating and configuring the Firebase project
-- Enabling authentication providers
-- Publishing and testing Realtime Database security rules
-- Testing authentication, profiles, favourites, watchlists, data isolation, and catalogue permissions
-- Configuring Firebase Admin credentials and verifying the catalogue importer
-- Running the final tests, linter, and production build
-
-These contributions are documented as student-directed, AI-assisted development and manual configuration/testing, not as direct manual source-code edits.
-
-## Development and review disclosure
-
 The student selected the project requirements, branding, feature priorities, and visual direction. Codex generated and revised the application source code. The student did **not** directly edit the source code.
 
 The student's hands-on contribution included:
